@@ -1,0 +1,56 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class MetricaSensor {
+    + sensor_id: String
+    + pm2_5: double
+    + co2: double
+    + tmp: double
+    + timestamp: String
+    + toJson(): String
+}
+
+class ColaConcurrente {
+    - buffer: std::queue<MetricaSensor>
+    - mtx: std::mutex
+    - cv_productores: std::condition_variable
+    - cv_consumidores: std::condition_variable
+    - capacidad_maxima: int
+    + push(data: MetricaSensor): void
+    + pop(): MetricaSensor
+}
+
+class SensorHiloProductor {
+    - sensor_id: String
+    - puerto_mqtt: int
+    + recibirLecturasMQTT(): void
+    + enviarACola(data: MetricaSensor): void
+}
+
+class ThreadPoolConsumidor {
+    - num_workers: int
+    - trabajadores: std::vector<std::thread>
+    + procesarMetricas(): void
+    + calcularPromediosParalelo(): void
+    + evaluarUmbrales(data: MetricaSensor): void
+}
+
+class DatabaseManager {
+    - db_connection: MySQL_Conn
+    + guardarLecturaTransaccional(data: MetricaSensor): bool
+    + registrarAlerta(alerta: String): bool
+}
+
+class APIServiceFastAPI {
+    + getEstadoClima(): JSON
+    + getAlertas(): JSON
+}
+
+SensorHiloProductor ..> MetricaSensor : crea
+ColaConcurrente "1" o-- "*" MetricaSensor : almacena
+SensorHiloProductor --> ColaConcurrente : produce
+ThreadPoolConsumidor --> ColaConcurrente : consume
+ThreadPoolConsumidor --> DatabaseManager : persiste datos
+APIServiceFastAPI --> DatabaseManager : consulta datos
+
+@enduml
