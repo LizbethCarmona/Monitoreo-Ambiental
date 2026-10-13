@@ -1,1 +1,95 @@
-
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lote de métricas de sensores ambientales",
+  "description": "Estructura de ingesta por lotes para el proyecto Monitoreo ambiental en tiempo real (ODS 11 y 13). Ver docs/reportes/Reporte_Tecnico_Metricas_JSON.pdf para la justificación completa.",
+  "type": "object",
+  "required": ["metadatos", "lecturas"],
+  "properties": {
+    "metadatos": {
+      "type": "object",
+      "required": ["proyecto", "ods", "descripcion", "total_sensores", "timestamp_lote"],
+      "properties": {
+        "proyecto": { "type": "string" },
+        "ods": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "descripcion": { "type": "string" },
+        "total_sensores": {
+          "type": "integer",
+          "description": "Debe coincidir con la longitud del arreglo 'lecturas' del lote."
+        },
+        "timestamp_lote": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca temporal UTC (ISO 8601) de cuando se cerró el lote."
+        }
+      }
+    },
+    "lecturas": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/lectura" }
+    }
+  },
+  "$defs": {
+    "lectura": {
+      "type": "object",
+      "required": ["sensor_id", "pm2.5", "co2", "tmp", "timestamp"],
+      "properties": {
+        "sensor_id": {
+          "type": "string",
+          "description": "Identificador alfanumérico único del dispositivo. Clave para el mapeo concurrente (qué hilo/consumidor atiende qué nodo) y para saber qué sensor disparó una alerta de umbral."
+        },
+        "pm2.5": {
+          "type": "number",
+          "description": "Partículas finas suspendidas en µg/m³. Métrica crítica para el ODS 11 (calidad del aire urbana)."
+        },
+        "co2": {
+          "type": "number",
+          "description": "Dióxido de carbono en ppm. Indicador primario para el ODS 13 (acción por el clima)."
+        },
+        "tmp": {
+          "type": "number",
+          "description": "Temperatura ambiente en grados Celsius."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Marca temporal UTC (ISO 8601) de la lectura individual; permite ordenar eventos asíncronos de N sensores."
+        }
+      }
+    }
+  },
+  "ejemplo": {
+    "metadatos": {
+      "proyecto": "Monitoreo ambiental en tiempo real",
+      "ods": [11, 13],
+      "descripcion": "Ingesta simultánea de N sensores y procesamiento paralelo con detección de umbrales",
+      "total_sensores": 3,
+      "timestamp_lote": "2026-09-24T16:48:00Z"
+    },
+    "lecturas": [
+      {
+        "sensor_id": "sensor_01",
+        "pm2.5": 15.4,
+        "co2": 420,
+        "tmp": 24.5,
+        "timestamp": "2026-09-24T16:47:55Z"
+      },
+      {
+        "sensor_id": "sensor_02",
+        "pm2.5": 48.2,
+        "co2": 610,
+        "tmp": 27.1,
+        "timestamp": "2026-09-24T16:47:57Z"
+      },
+      {
+        "sensor_id": "sensor_03",
+        "pm2.5": 85.0,
+        "co2": 780,
+        "tmp": 31.4,
+        "timestamp": "2026-09-24T16:48:00Z"
+      }
+    ]
+  }
+}
