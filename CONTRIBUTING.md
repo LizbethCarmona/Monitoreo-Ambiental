@@ -58,4 +58,4 @@ para la Definition of Done completa (pruebas de concurrencia, transaccionalidad,
 El profesor autorizó usar IA como apoyo, con dos condiciones:
 
 1. Debe citarse (indicar en el commit/PR o en el documento qué se generó con ayuda de IA).
-2. Solo puede usarse con el correo institucional (`@my.uvm.edu.mx`), por ejemplo con Gemini.
+2. Solo puede usarse con el correo institucional (`@my.uvm.edu.mx`), con Gemini.

@@ -32,9 +32,10 @@ de agregados con detección de umbrales de contaminación.
 .
 ├── docs/                 # Documentación, UML, JSON de métricas, cronograma
 ├── src/
-│   ├── cpp_ingestion/    # Núcleo concurrente (C++17): colas, hilos, umbrales, persistencia
+│   ├── cpp_ingestion/    # Núcleo concurrente (C++17): colas, hilos, umbrales, persistencia real en MySQL
 │   ├── database/         # Esquema MySQL, datos de prueba y pruebas de carga concurrente
-│   └── api_fastapi/      # API REST (FastAPI) — esqueleto inicial
+│   ├── api_fastapi/      # API REST (FastAPI) — consulta MySQL real
+│   └── dashboard/        # Dashboard web (HTML/CSS/JS), servido por la API
 └── CONTRIBUTING.md
 ```
 
@@ -52,7 +53,23 @@ SensorHiloProductor (N hilos) --push--> ColaConcurrente --pop--> ThreadPoolConsu
 
 Ver el detalle completo en [docs/arquitectura.md](docs/arquitectura.md).
 
-## Cómo correr cada parte
+## Cómo correr el sistema completo (de verdad, extremo a extremo)
+
+1. Crea el esquema en MySQL (una sola vez): `mysql -u root -p < src/database/schema.sql`.
+2. Define `$env:MYSQL_PASSWORD` (y opcionalmente `MYSQL_HOST`/`MYSQL_USER`/`MYSQL_DATABASE`
+   si no usas los valores por defecto) — la misma variable la usan el núcleo en C++, la API y
+   `src/database/carga_concurrente.py`.
+3. Corre el núcleo concurrente en modo continuo (alimenta MySQL con lecturas reales cada
+   pocos segundos): `cd src/cpp_ingestion && make run-continuo`.
+4. En otra terminal, corre la API + dashboard: `cd src/api_fastapi && uvicorn app.main:app --reload`.
+5. Abre `http://127.0.0.1:8000/dashboard/`: verás temperatura, PM2.5, CO2 y alertas **reales**,
+   leídos de MySQL, cambiando cada pocos segundos a medida que el núcleo en C++ inserta
+   nuevas lecturas.
+
+Ver el README de cada carpeta para el detalle (variables de entorno, cómo instalar el
+conector de MySQL, etc.).
+
+## Cómo correr cada parte por separado
 
 - **Núcleo concurrente (C++):** ver [src/cpp_ingestion/README.md](src/cpp_ingestion/README.md)
   (`make run-demo`, `make test`).
@@ -66,4 +83,6 @@ Ver el detalle completo en [docs/arquitectura.md](docs/arquitectura.md).
 ## Estado del proyecto
 
 Ver [docs/cronograma/cronograma.xlsx](docs/cronograma/cronograma.xlsx) para el detalle
-semana a semana (9 semanas, 4 sprints, presentación final el 23 de noviembre).
+semana a semana (9 semanas, 4 sprints, presentación final el 23 de noviembre). El flujo
+extremo a extremo (hilos productores → cola concurrente → pool de hilos → MySQL real → API
+→ dashboard) ya funciona de principio a fin, adelantado respecto al cronograma original.

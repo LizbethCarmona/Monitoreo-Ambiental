@@ -1,8 +1,9 @@
 # Dashboard web (`src/dashboard`)
 
 Interfaz visual del proyecto: tarjeta de clima/calidad del aire actual, pronóstico de
-temperatura por hora y panel de alertas activas. Replica el mockup de referencia acordado por
-el equipo. Corresponde al componente "Dashboard" del diagrama de arquitectura
+temperatura por hora y panel de alertas activas, con **datos reales** leídos de MySQL a
+través de la API. Replica el mockup de referencia acordado por el equipo. Corresponde al
+componente "Dashboard" del diagrama de arquitectura
 ([docs/arquitectura.md](../../docs/arquitectura.md)) y adelanta el Sprint 4 (Semana 7).
 
 ## Cómo verlo
@@ -33,4 +34,3 @@ Abre `http://127.0.0.1:8000/dashboard/` en el navegador.
 
 - Reemplazar el polling por WebSocket para actualización push real.
 - Historial de alertas (el enlace "Ver historial de alertas" es un placeholder).
-- Conectar con datos reales de MySQL en lugar de los de ejemplo de `app/main.py`.

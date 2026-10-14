@@ -37,9 +37,18 @@ El script reporta lecturas guardadas, alertas generadas, duplicados rechazados (
 esperado por la restricción `UNIQUE KEY uq_sensor_momento`) y reintentos por deadlock (error
 1213), y al final verifica que no existan alertas huérfanas.
 
-## Conexión con el núcleo concurrente en C++
+## Conexión con el núcleo concurrente en C++ y la API
+
+Esta base de datos ya está conectada de verdad a los otros dos componentes:
+
+- `src/cpp_ingestion/` (`DatabaseManager`) inserta aquí las lecturas y alertas reales que
+  genera el núcleo concurrente (ver `make run-continuo` en su README).
+- `src/api_fastapi/` lee de aquí para `getEstadoClima()`/`getAlertas()`.
+
+Los tres componentes se conectan con las mismas variables de entorno
+(`MYSQL_HOST`/`MYSQL_PORT`/`MYSQL_USER`/`MYSQL_PASSWORD`/`MYSQL_DATABASE`).
 
 `src/cpp_ingestion/include/Umbrales.hpp` replica manualmente los valores de la tabla
 `umbrales` de este esquema. Si el equipo de base de datos cambia un umbral aquí, debe
-actualizarse también ese archivo (hasta que en la Semana 4 `DatabaseManager` lea los umbrales
-directamente de MySQL en lugar de tenerlos hardcodeados).
+actualizarse también ese archivo (pendiente: que `DatabaseManager` lea los umbrales
+directamente de MySQL en vez de tenerlos hardcodeados).

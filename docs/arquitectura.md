@@ -82,13 +82,22 @@ usuarios/autoridades (vínculo con ODS 11 y 13).
 ## Estado de implementación por sprint
 
 Ver [docs/cronograma/cronograma.xlsx](cronograma/cronograma.xlsx) para el detalle semana a
-semana. Resumen rápido:
+semana. Resumen rápido (actualizado tras conectar el flujo extremo a extremo de verdad):
 
 - **Sprint 1 (semanas 1-2):** JSON de métricas, UML, simuladores IoT y núcleo concurrente
-  (`src/cpp_ingestion/`) — en progreso.
+  (`src/cpp_ingestion/`) — hecho.
 - **Sprint 2 (semanas 3-4):** esquema de base de datos y persistencia transaccional
-  (`src/database/`) — esquema y pruebas de carga ya avanzados.
-- **Sprint 3 (semanas 5-6):** API REST (FastAPI) y WebSockets (`src/api_fastapi/`) — esqueleto
-  inicial creado, pendiente motor de alertas y sockets.
-- **Sprint 4 (semanas 7-8):** dashboard, pruebas de estrés, documentación final y
-  sustentación.
+  (`src/database/`) — hecho; `DatabaseManager` ya inserta lecturas y alertas reales en MySQL
+  con transacciones `START TRANSACTION`/`COMMIT`/`ROLLBACK` (adelantado desde la Semana 4).
+- **Sprint 3 (semanas 5-6):** API REST (FastAPI) consultando MySQL real (`src/api_fastapi/`)
+  y dashboard (`src/dashboard/`) — hecho (adelantado); pendiente el motor de alertas
+  instantáneo dedicado y reemplazar el polling por WebSockets.
+- **Sprint 4 (semanas 7-8):** pruebas de estrés formales, documentación final y
+  sustentación — pendiente.
+
+### Cómo correr el flujo completo
+
+Ver la sección "Cómo correr el sistema completo" del [README](../README.md) raíz: en
+resumen, `make run-continuo` en `src/cpp_ingestion/` deja el núcleo insertando lecturas
+reales en MySQL cada pocos segundos, mientras `uvicorn app.main:app` en `src/api_fastapi/`
+sirve la API y el dashboard leyendo esos mismos datos en vivo.

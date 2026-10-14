@@ -27,10 +27,10 @@ cpp_ingestion/
    acumulador de promedios compartido (protegido con mutex) y evalúan umbrales
    (`include/Umbrales.hpp`, sincronizados con `src/database/schema.sql`).
 4. `DatabaseManager` persiste cada lectura (y su alerta, si aplica) como una única
-   "transacción" protegida por mutex. **Nota:** por ahora escribe en archivos de bitácora
-   (`lecturas.log`/`alertas.log`) en lugar de MySQL real; la integración con MySQL desde C++
-   está planeada para la Semana 4 del cronograma. El esquema real ya existe en
-   `src/database/schema.sql`.
+   transacción real de MySQL (`START TRANSACTION` / `COMMIT` / `ROLLBACK`), usando el
+   conector C de MariaDB (protocolo compatible con MySQL 8). Esto ya está conectado de
+   verdad contra `src/database/schema.sql` (adelantado respecto al cronograma, que lo
+   planeaba para la Semana 4).
 
 ## Compilar y correr
 
@@ -42,21 +42,55 @@ cpp_ingestion/
 > Con MSYS2 instalado, agrega `C:\msys64\ucrt64\bin` y `C:\msys64\usr\bin` al PATH de la
 > sesión antes de compilar.
 
+### Instalar el conector de MySQL (una sola vez)
+
+`DatabaseManager` se conecta a MySQL real usando el conector C de MariaDB (compatible con el
+protocolo de MySQL 8):
+
+```powershell
+# Windows (MSYS2 ucrt64)
+C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-ucrt-x86_64-libmariadbclient mingw-w64-ucrt-x86_64-pkgconf"
+```
+
+```bash
+# Linux (Debian/Ubuntu)
+sudo apt install libmariadb-dev pkg-config
+```
+
+### Variables de entorno (conexión a MySQL)
+
+Las mismas que usa `src/database/carga_concurrente.py`:
+
+```powershell
+$env:MYSQL_HOST = "127.0.0.1"        # opcional, por defecto 127.0.0.1
+$env:MYSQL_PORT = "3306"             # opcional, por defecto 3306
+$env:MYSQL_USER = "root"             # opcional, por defecto root
+$env:MYSQL_PASSWORD = "tu_clave"     # obligatoria
+$env:MYSQL_DATABASE = "monitoreo_ambiental"  # opcional
+```
+
+Antes de correr la demo por primera vez, crea el esquema real (ver
+[src/database/README.md](../database/README.md)):
+
+```powershell
+mysql -u root -p < ..\database\schema.sql
+```
+
+### Compilar
+
 ```bash
 cd src/cpp_ingestion
 make            # compila la demo y las pruebas en bin/
-make run-demo   # corre el pipeline completo (productores -> cola -> pool -> persistencia)
-make test       # corre las pruebas de concurrencia
-make clean      # borra los binarios y bitácoras generadas
+make run-demo   # corre un lote finito (6 sensores x 50 lecturas) contra MySQL real
+make run-continuo  # modo continuo: alimenta MySQL cada 3s hasta Ctrl+C ("tiempo real")
+make test       # corre las pruebas de concurrencia (no requieren MySQL)
+make clean      # borra los binarios generados
 ```
 
-También se puede compilar manualmente, por ejemplo:
-
-```bash
-g++ -std=c++17 -Iinclude -pthread -o bin/demo src/main.cpp src/SensorHiloProductor.cpp \
-    src/ThreadPoolConsumidor.cpp src/DatabaseManager.cpp
-./bin/demo 6 50 4   # 6 sensores, 50 lecturas c/u, pool de 4 hilos
-```
+`bin/demo` acepta argumentos opcionales: `bin/demo [num_sensores] [lecturas_por_sensor] [num_workers] [intervalo_ms]`.
+Si `lecturas_por_sensor` es `0` (o se omite), corre en **modo continuo** hasta Ctrl+C,
+imprimiendo un resumen cada 5 segundos — es el modo pensado para dejarlo corriendo mientras
+se ve el dashboard (`src/dashboard/`) actualizarse con datos reales.
 
 ## Pruebas de concurrencia
 
@@ -74,8 +108,7 @@ g++ -std=c++17 -Iinclude -pthread -o bin/demo src/main.cpp src/SensorHiloProduct
 
 ## Pendiente (próximos sprints)
 
-- Sprint 2 (Semana 4): reemplazar `DatabaseManager` por un cliente real de MySQL
-  (`libmysqlclient` o MySQL Connector/C++) usando transacciones reales
-  (`START TRANSACTION` / `COMMIT`), conforme a `src/database/schema.sql`.
 - Sprint 3 (Semanas 5-6): `SensorHiloProductor::recibirLecturasMQTT()` debe reemplazar la
   simulación por una suscripción real a un broker MQTT.
+- Leer los umbrales directamente de la tabla `umbrales` en vez de tenerlos hardcodeados en
+  `include/Umbrales.hpp` (hoy deben mantenerse sincronizados manualmente).
