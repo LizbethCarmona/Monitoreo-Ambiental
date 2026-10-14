@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <atomic>
 #include "ColaConcurrente.hpp"
 
 // Simula un nodo sensor IoT. En producción, recibirLecturasMQTT() se
@@ -12,8 +13,12 @@
 // ColaConcurrente recibida por referencia.
 class SensorHiloProductor {
 public:
+    // Si num_lecturas <= 0, el sensor genera lecturas indefinidamente (modo
+    // continuo, para alimentar la base de datos en "tiempo real") hasta que
+    // detener_ se ponga en true (por ejemplo, al recibir Ctrl+C en main.cpp).
     SensorHiloProductor(std::string sensor_id, int puerto_mqtt, ColaConcurrente& cola,
-                        int num_lecturas, int intervalo_ms, unsigned semilla);
+                        int num_lecturas, int intervalo_ms, unsigned semilla,
+                        std::atomic<bool>& detener);
 
     // Bucle principal que corre en el hilo del productor.
     void recibirLecturasMQTT();
@@ -27,4 +32,5 @@ private:
     int num_lecturas_;
     int intervalo_ms_;
     unsigned semilla_;
+    std::atomic<bool>& detener_;
 };

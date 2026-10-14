@@ -6,9 +6,10 @@
 #include <iomanip>
 
 SensorHiloProductor::SensorHiloProductor(std::string sensor_id, int puerto_mqtt, ColaConcurrente& cola,
-                                         int num_lecturas, int intervalo_ms, unsigned semilla)
+                                         int num_lecturas, int intervalo_ms, unsigned semilla,
+                                         std::atomic<bool>& detener)
     : sensor_id_(std::move(sensor_id)), puerto_mqtt_(puerto_mqtt), cola_(cola),
-      num_lecturas_(num_lecturas), intervalo_ms_(intervalo_ms), semilla_(semilla) {}
+      num_lecturas_(num_lecturas), intervalo_ms_(intervalo_ms), semilla_(semilla), detener_(detener) {}
 
 namespace {
 std::string marcaTemporalUtcIso8601() {
@@ -39,7 +40,12 @@ void SensorHiloProductor::recibirLecturasMQTT() {
     std::uniform_real_distribution<double> dist_tmp(15.0, 33.0);
     std::uniform_real_distribution<double> prob_pico(0.0, 1.0);
 
-    for (int i = 0; i < num_lecturas_; ++i) {
+    // Modo finito: for de num_lecturas_ iteraciones. Modo continuo
+    // (num_lecturas_ <= 0): sigue generando lecturas hasta que detener_ se
+    // ponga en true (ver manejo de SIGINT en main.cpp).
+    for (int i = 0; num_lecturas_ <= 0 || i < num_lecturas_; ++i) {
+        if (detener_.load(std::memory_order_relaxed)) break;
+
         MetricaSensor dato;
         dato.sensor_id = sensor_id_;
         dato.pm2_5 = dist_pm25(rng);
