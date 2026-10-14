@@ -1,0 +1,396 @@
+:root {
+  --bg: #0a1020;
+  --panel: #0d1426;
+  --card: #121a30;
+  --card-alt: #10182c;
+  --border: rgba(255, 255, 255, 0.06);
+  --text: #e7ebf5;
+  --muted: #8a93ab;
+  --blue: #2f6fed;
+  --green: #34d399;
+  --amber: #f6b942;
+  --red: #f0585f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.app {
+  width: 100%;
+  max-width: 900px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 24px 16px;
+}
+
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.app-header h1 {
+  margin: 0 0 4px;
+  font-size: 1.4rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.muted.small {
+  font-size: 0.78rem;
+}
+
+.live-badge {
+  background: #15203a;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.green {
+  background: var(--green);
+}
+
+.dot.amber {
+  background: var(--amber);
+}
+
+.dot.red {
+  background: var(--red);
+}
+
+.dot.pulse {
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(52, 211, 153, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1.1fr;
+  grid-template-rows: auto auto;
+  gap: 16px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+
+.weather-card {
+  grid-column: 1;
+  grid-row: 1;
+  text-align: center;
+  background: linear-gradient(180deg, #11193a 0%, var(--card) 70%);
+}
+
+.weather-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.city {
+  font-weight: 600;
+}
+
+.date {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.temp-big {
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 10px 0 2px;
+}
+
+.temp-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.temp-range {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+
+.air-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-alt);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  margin-bottom: 18px;
+}
+
+.metrics-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  position: relative;
+}
+
+.metric .dot {
+  position: absolute;
+  top: 4px;
+  left: -14px;
+}
+
+.metric strong {
+  font-size: 0.95rem;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.alerts-card {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+}
+
+.alerts-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.alerts-head h2 {
+  font-size: 1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-count {
+  background: var(--red);
+  color: #1a0506;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.alerts-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  flex: 1;
+}
+
+.alert-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.alert-item:last-child {
+  border-bottom: none;
+}
+
+.alert-left {
+  display: flex;
+  gap: 8px;
+}
+
+.alert-left .dot {
+  margin-top: 5px;
+}
+
+.alert-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.alert-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.alert-sub.critico {
+  color: var(--red);
+}
+
+.alert-sub.advertencia {
+  color: var(--amber);
+}
+
+.alert-right {
+  text-align: right;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.alert-unit {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.ver-historial {
+  display: block;
+  margin-top: 12px;
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 0.82rem;
+}
+
+.ver-historial:hover {
+  text-decoration: underline;
+}
+
+.hourly-card {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.hourly-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+
+.hourly-head h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.hourly-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.hour-slot {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 10px 1px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.hour-slot.active {
+  background: var(--blue);
+  color: #fff;
+}
+
+.hour-slot .hour-label {
+  display: block;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  font-size: 0.68rem;
+}
+
+.hour-slot .hour-dot {
+  margin: 0 auto 8px;
+}
+
+.hour-slot .hour-temp {
+  display: block;
+  font-weight: 600;
+  color: inherit;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.app-footer {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .weather-card,
+  .alerts-card,
+  .hourly-card {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}

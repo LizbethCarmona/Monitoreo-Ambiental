@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Monitoreo ambiental</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div>
+      <h1>Monitoreo ambiental</h1>
+      <p class="muted" id="subtitulo">Ciudad de México · 3 sensores activos</p>
+    </div>
+    <div class="live-badge"><span class="dot green pulse"></span> En vivo</div>
+  </header>
+
+  <main class="grid">
+    <section class="card weather-card">
+      <div class="weather-head">
+        <div class="city" id="ciudad">Ciudad de México</div>
+        <div class="date" id="fecha">—</div>
+      </div>
+
+      <div class="temp-big" id="temp-actual">—°</div>
+      <div class="temp-label">Temperatura actual</div>
+      <div class="temp-range" id="temp-range">Mín —° · Máx —° hoy</div>
+
+      <div class="air-quality-badge" id="calidad-badge">
+        <span class="dot green"></span> <span id="calidad-texto">Calidad del aire: —</span>
+      </div>
+
+      <div class="metrics-row">
+        <div class="metric">
+          <span class="dot green" id="dot-pm25"></span>
+          <strong id="pm25">— µg/m³</strong>
+          <span class="metric-label">PM2.5</span>
+        </div>
+        <div class="metric">
+          <span class="dot green" id="dot-co2"></span>
+          <strong id="co2">— ppm</strong>
+          <span class="metric-label">CO2</span>
+        </div>
+        <div class="metric">
+          <span class="dot green" id="dot-pm25-24h"></span>
+          <strong id="pm25-24h">— µg/m³</strong>
+          <span class="metric-label" id="pm25-24h-label">PM2.5 promedio 24 h (límite —)</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card alerts-card">
+      <div class="alerts-head">
+        <h2>Alertas activas <span class="badge-count" id="alert-count">0</span></h2>
+        <span class="muted small">VALOR / LÍMITE</span>
+      </div>
+      <ul class="alerts-list" id="alerts-list">
+        <li class="muted small" style="padding:12px 0;">Cargando alertas…</li>
+      </ul>
+      <a href="#" class="ver-historial" id="ver-historial">Ver historial de alertas →</a>
+    </aside>
+
+    <section class="card hourly-card">
+      <div class="hourly-head">
+        <h2>Hoy</h2>
+        <span class="muted small">Temperatura promedio por hora</span>
+      </div>
+      <div class="hourly-row" id="hourly-row"></div>
+      <div class="legend">
+        <span class="muted small">Punto = nivel de PM2.5 en esa hora:</span>
+        <span class="legend-item"><span class="dot green"></span> Normal</span>
+        <span class="legend-item"><span class="dot amber"></span> Advertencia</span>
+        <span class="legend-item"><span class="dot red"></span> Crítico</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer" id="app-footer">
+    Datos de ejemplo · Fuente real: tablas lecturas y alertas (MySQL) vía FastAPI · Umbrales:
+    NOM-025-SSA1-2021 (PM2.5), NOM-010-STPS-2014 (CO2), NOM-015-STPS-2001 (temperatura).
+  </footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
