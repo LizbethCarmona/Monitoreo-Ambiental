@@ -21,6 +21,7 @@ public:
 
     long totalProcesadas() const { return total_procesadas_.load(); }
     long totalAlertas() const { return total_alertas_.load(); }
+    long totalErroresPersistencia() const { return total_errores_persistencia_.load(); }
     const AcumuladorAgregados& agregados() const { return agregados_; }
 
 private:
@@ -31,8 +32,10 @@ private:
     int num_workers_;
     ColaConcurrente& cola_;
     DatabaseManager& db_;
+    UmbralesLectura umbrales_;
     std::vector<std::thread> trabajadores_;
     AcumuladorAgregados agregados_;
     std::atomic<long> total_procesadas_{0};
     std::atomic<long> total_alertas_{0};
+    std::atomic<long> total_errores_persistencia_{0};
 };

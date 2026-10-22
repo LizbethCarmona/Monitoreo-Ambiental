@@ -5,10 +5,10 @@
 #include <sstream>
 #include <iomanip>
 
-SensorHiloProductor::SensorHiloProductor(std::string sensor_id, int puerto_mqtt, ColaConcurrente& cola,
+SensorHiloProductor::SensorHiloProductor(std::string sensor_id, ColaConcurrente& cola,
                                          int num_lecturas, int intervalo_ms, unsigned semilla,
                                          std::atomic<bool>& detener)
-    : sensor_id_(std::move(sensor_id)), puerto_mqtt_(puerto_mqtt), cola_(cola),
+    : sensor_id_(std::move(sensor_id)), cola_(cola),
       num_lecturas_(num_lecturas), intervalo_ms_(intervalo_ms), semilla_(semilla), detener_(detener) {}
 
 namespace {
@@ -30,7 +30,7 @@ std::string marcaTemporalUtcIso8601() {
 }
 } // namespace
 
-void SensorHiloProductor::recibirLecturasMQTT() {
+void SensorHiloProductor::simularLecturas() {
     // Generador de números aleatorios propio del hilo (no se comparte entre
     // productores), evitando así otra posible condición de carrera: dos
     // hilos usando el mismo std::mt19937 al mismo tiempo.

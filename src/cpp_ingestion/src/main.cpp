@@ -8,8 +8,7 @@
 //   bin/demo [num_sensores] [lecturas_por_sensor] [num_workers] [intervalo_ms]
 //
 // Si lecturas_por_sensor es 0 (o se omite), corre en MODO CONTINUO: genera
-// lecturas indefinidamente, alimentando la base de datos en "tiempo real"
-// (para que la API/dashboard muestren datos que cambian), hasta Ctrl+C.
+// lecturas sinteticas indefinidamente y las persiste en MySQL hasta Ctrl+C.
 //
 // Variables de entorno para la conexion a MySQL (mismas que
 // src/database/carga_concurrente.py): MYSQL_HOST, MYSQL_PORT, MYSQL_USER,
@@ -95,15 +94,14 @@ int main(int argc, char** argv) {
     std::vector<SensorHiloProductor> sensores;
     sensores.reserve(num_sensores);
     for (int i = 0; i < num_sensores; ++i) {
-        sensores.emplace_back(idSensor(i), 1883, cola, lecturas_por_sensor, intervalo_ms,
+        sensores.emplace_back(idSensor(i), cola, lecturas_por_sensor, intervalo_ms,
                               /*semilla=*/1000u + i, g_detener);
     }
     for (auto& sensor : sensores) {
-        productores.emplace_back(&SensorHiloProductor::recibirLecturasMQTT, &sensor);
+        productores.emplace_back(&SensorHiloProductor::simularLecturas, &sensor);
     }
 
-    // Hilo monitor: en modo continuo imprime un resumen periodico para ver
-    // que el sistema sigue vivo e insertando filas reales en MySQL.
+    // Hilo monitor: en modo continuo muestra el avance de la simulacion y la persistencia.
     std::thread monitor([&]() {
         while (!g_detener.load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -111,6 +109,7 @@ int main(int argc, char** argv) {
             std::cout << "[monitor] procesadas=" << pool.totalProcesadas()
                       << " guardadas=" << db.totalLecturasGuardadas()
                       << " alertas=" << pool.totalAlertas()
+                      << " errores_persistencia=" << pool.totalErroresPersistencia()
                       << " duplicados=" << db.totalDuplicadosRechazados() << std::endl;
         }
     });
@@ -128,11 +127,14 @@ int main(int argc, char** argv) {
     std::cout << "Lecturas procesadas:   " << total_procesado << "\n";
     std::cout << "Lecturas guardadas:    " << db.totalLecturasGuardadas() << "\n";
     std::cout << "Duplicados rechazados: " << db.totalDuplicadosRechazados() << "\n";
+    std::cout << "Errores de persistencia: " << pool.totalErroresPersistencia() << "\n";
     std::cout << "Alertas generadas:     " << pool.totalAlertas() << "\n";
 
-    bool integridad_ok = (db.totalLecturasGuardadas() + db.totalDuplicadosRechazados()) == total_procesado;
+    bool integridad_ok =
+        (db.totalLecturasGuardadas() + db.totalDuplicadosRechazados()) == total_procesado
+        && pool.totalErroresPersistencia() == 0;
     if (lecturas_por_sensor > 0) {
-        integridad_ok = integridad_ok && (total_procesado == total_esperado);
+        integridad_ok = integridad_ok && (total_procesado + pool.totalErroresPersistencia() == total_esperado);
         std::cout << "Lecturas generadas:    " << total_esperado << "\n";
     }
     std::cout << "\nIntegridad (sin perdida de datos): " << (integridad_ok ? "OK" : "FALLO") << "\n";

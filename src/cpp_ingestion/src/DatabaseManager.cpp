@@ -5,6 +5,8 @@
 #include <sstream>
 #include <vector>
 #include <cstring>
+#include <cstdlib>
+#include <cmath>
 
 namespace {
 MYSQL* comoMysql(void* ptr) { return static_cast<MYSQL*>(ptr); }
@@ -35,7 +37,16 @@ DatabaseManager::DatabaseManager(const Config& config) {
         throw std::runtime_error("DatabaseManager: no se pudo conectar a MySQL (" +
                                   config.host + ":" + std::to_string(config.puerto) + "): " + error);
     }
-    mysql_autocommit(conn, 0);
+    if (mysql_query(conn, "SET time_zone = '+00:00'") != 0) {
+        std::string error = mysql_error(conn);
+        mysql_close(conn);
+        throw std::runtime_error("DatabaseManager: no se pudo fijar la zona horaria UTC: " + error);
+    }
+    if (mysql_autocommit(conn, 0) != 0) {
+        std::string error = mysql_error(conn);
+        mysql_close(conn);
+        throw std::runtime_error("DatabaseManager: no se pudo habilitar el control transaccional: " + error);
+    }
     conexion_ = conn;
 }
 
@@ -47,21 +58,58 @@ DatabaseManager::~DatabaseManager() {
 
 bool DatabaseManager::ejecutar(const std::string& sql) {
     MYSQL* conn = comoMysql(conexion_);
-    return mysql_query(conn, sql.c_str()) == 0;
+    if (mysql_query(conn, sql.c_str()) == 0) return true;
+    ultimo_error_ = mysql_error(conn);
+    return false;
 }
 
-void DatabaseManager::asegurarSensorRegistrado(const std::string& sensor_id) {
+bool DatabaseManager::asegurarSensorRegistrado(const std::string& sensor_id) {
     // Cache local para no reenviar el mismo INSERT IGNORE en cada lectura:
     // solo se registra una vez por sensor_id durante la vida del proceso.
-    if (sensores_registrados_.count(sensor_id) > 0) return;
+    if (sensores_registrados_.count(sensor_id) > 0) return true;
 
     MYSQL* conn = comoMysql(conexion_);
     std::string id_escapado = escapar(conn, sensor_id);
     std::ostringstream sql;
     sql << "INSERT IGNORE INTO sensores (sensor_id, nombre) VALUES ('"
         << id_escapado << "', '" << id_escapado << "')";
-    ejecutar(sql.str()); // si falla, el INSERT de la lectura fallara despues por la FK y se reportara ahi
+    if (!ejecutar(sql.str())) return false;
     sensores_registrados_.insert(sensor_id);
+    return true;
+}
+
+UmbralesLectura DatabaseManager::cargarUmbralesLectura() {
+    std::lock_guard<std::mutex> lock(mtx_);
+    MYSQL* conn = comoMysql(conexion_);
+    if (!ejecutar("SELECT metrica, nivel, valor_limite FROM umbrales WHERE aplica_a = 'lectura'")) {
+        throw std::runtime_error("No se pudieron cargar los umbrales de lectura: " + ultimo_error_);
+    }
+    MYSQL_RES* resultado = mysql_store_result(conn);
+    if (!resultado) {
+        ultimo_error_ = mysql_error(conn);
+        throw std::runtime_error("No se pudieron leer los umbrales de lectura: " + ultimo_error_);
+    }
+
+    UmbralesLectura umbrales;
+    MYSQL_ROW fila;
+    while ((fila = mysql_fetch_row(resultado)) != nullptr) {
+        if (!fila[0] || !fila[1] || !fila[2]) continue;
+        char* fin = nullptr;
+        double limite = std::strtod(fila[2], &fin);
+        if (fin == fila[2] || *fin != '\0' || !std::isfinite(limite)) {
+            mysql_free_result(resultado);
+            throw std::runtime_error("Valor no numerico en la tabla umbrales.");
+        }
+        umbrales[fila[0]][fila[1]] = limite;
+    }
+    mysql_free_result(resultado);
+    for (const char* metrica : {"pm25", "co2", "tmp"}) {
+        auto por_metrica = umbrales.find(metrica);
+        if (por_metrica == umbrales.end() || por_metrica->second.count("critico") == 0) {
+            throw std::runtime_error(std::string("Falta el umbral critico de lectura para ") + metrica + ".");
+        }
+    }
+    return umbrales;
 }
 
 std::string DatabaseManager::timestampIso8601AFechaMysql(const std::string& iso8601) {
@@ -86,7 +134,10 @@ bool DatabaseManager::guardarLecturaTransaccional(const MetricaSensor& dato, con
     std::lock_guard<std::mutex> lock(mtx_);
     MYSQL* conn = comoMysql(conexion_);
 
-    asegurarSensorRegistrado(dato.sensor_id);
+    if (!asegurarSensorRegistrado(dato.sensor_id)) {
+        ejecutar("ROLLBACK");
+        return false;
+    }
 
     if (!ejecutar("START TRANSACTION")) {
         return false;
@@ -114,7 +165,6 @@ bool DatabaseManager::guardarLecturaTransaccional(const MetricaSensor& dato, con
     }
 
     unsigned long long lectura_id = mysql_insert_id(conn);
-    ++total_lecturas_;
 
     if (alerta_opcional != nullptr) {
         std::string metrica_esc = escapar(conn, alerta_opcional->metrica);
@@ -131,12 +181,14 @@ bool DatabaseManager::guardarLecturaTransaccional(const MetricaSensor& dato, con
             ejecutar("ROLLBACK");
             return false;
         }
-        ++total_alertas_;
     }
 
     if (!ejecutar("COMMIT")) {
+        ejecutar("ROLLBACK");
         return false;
     }
+    ++total_lecturas_;
+    if (alerta_opcional != nullptr) ++total_alertas_;
     return true;
 }
 
@@ -153,4 +205,9 @@ long DatabaseManager::totalAlertasGuardadas() const {
 long DatabaseManager::totalDuplicadosRechazados() const {
     std::lock_guard<std::mutex> lock(mtx_);
     return total_duplicados_;
+}
+
+std::string DatabaseManager::ultimoError() const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    return ultimo_error_;
 }

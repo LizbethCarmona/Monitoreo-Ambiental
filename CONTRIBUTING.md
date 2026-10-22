@@ -52,10 +52,3 @@ Antes de fusionar a `develop`, un compañero **de un rol distinto** debe revisar
 (por ejemplo, un cambio en la API lo revisa alguien del núcleo concurrente). Ver la sección
 8 del [Documento de Justificación](docs/justificacion/Documento_Justificacion_Equipo_PC.pdf)
 para la Definition of Done completa (pruebas de concurrencia, transaccionalidad, etc.).
-
-## Uso de IA
-
-El profesor autorizó usar IA como apoyo, con dos condiciones:
-
-1. Debe citarse (indicar en el commit/PR o en el documento qué se generó con ayuda de IA).
-2. Solo puede usarse con el correo institucional (`@my.uvm.edu.mx`), con Gemini.

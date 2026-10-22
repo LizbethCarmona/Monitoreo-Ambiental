@@ -87,6 +87,10 @@ body {
   background: var(--red);
 }
 
+.dot.gray {
+  background: var(--muted);
+}
+
 .dot.pulse {
   box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
   animation: pulse 2s infinite;
@@ -171,6 +175,10 @@ body {
   margin-bottom: 18px;
 }
 
+.ods-context {
+  margin: -8px 0 14px;
+}
+
 .metrics-row {
   display: flex;
   justify-content: space-between;
@@ -205,15 +213,20 @@ body {
 
 .alerts-card {
   grid-column: 2;
-  grid-row: 1 / 3;
+  grid-row: 1;
+  align-self: start;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .alerts-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   margin-bottom: 6px;
 }
 
@@ -221,8 +234,14 @@ body {
   font-size: 1rem;
   margin: 0;
   display: flex;
+  flex: 1 1 130px;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.alerts-head > .muted {
+  text-align: right;
 }
 
 .badge-count {
@@ -237,8 +256,31 @@ body {
 .alerts-list {
   list-style: none;
   margin: 8px 0 0;
-  padding: 0;
-  flex: 1;
+  padding: 0 8px 0 0;
+  flex: 0 1 auto;
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(138, 147, 171, 0.55) transparent;
+  scrollbar-width: thin;
+}
+
+.alerts-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.alerts-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.alerts-list::-webkit-scrollbar-thumb {
+  background: rgba(138, 147, 171, 0.55);
+  border: 2px solid var(--card);
+  border-radius: 999px;
+}
+
+.alerts-list::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .alert-item {
@@ -256,6 +298,8 @@ body {
 
 .alert-left {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 8px;
 }
 
@@ -282,6 +326,7 @@ body {
 }
 
 .alert-right {
+  flex: 0 0 auto;
   text-align: right;
   font-size: 0.82rem;
   white-space: nowrap;
@@ -306,14 +351,15 @@ body {
 }
 
 .hourly-card {
-  grid-column: 1;
+  grid-column: 1 / -1;
   grid-row: 2;
 }
 
 .hourly-head {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-bottom: 10px;
 }
 
@@ -322,58 +368,157 @@ body {
   margin: 0;
 }
 
-.hourly-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
+.hourly-description {
+  margin: 0 0 8px;
 }
 
-.hour-slot {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  padding: 10px 1px;
-  border-radius: 10px;
+.hourly-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.hourly-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.82rem;
+}
+
+.hourly-table th,
+.hourly-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.hourly-table thead th {
+  color: var(--muted);
   font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.hour-slot.active {
-  background: var(--blue);
-  color: #fff;
-}
-
-.hour-slot .hour-label {
-  display: block;
-  margin-bottom: 8px;
-  white-space: nowrap;
-  font-size: 0.68rem;
-}
-
-.hour-slot .hour-dot {
-  margin: 0 auto 8px;
-}
-
-.hour-slot .hour-temp {
-  display: block;
   font-weight: 600;
-  color: inherit;
+  white-space: nowrap;
 }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 14px;
-  align-items: center;
-  font-size: 0.75rem;
+.hourly-table thead th:nth-child(1) {
+  width: 17%;
 }
 
-.legend-item {
-  display: flex;
+.hourly-table thead th:nth-child(2) {
+  width: 28%;
+}
+
+.hourly-table thead th:nth-child(3) {
+  width: 23%;
+}
+
+.hourly-table thead th:nth-child(4) {
+  width: 32%;
+}
+
+.hourly-table tbody th {
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hourly-table tbody td {
+  color: var(--text);
+}
+
+.hourly-table tbody tr.hourly-current {
+  background: rgba(47, 111, 237, 0.1);
+}
+
+.hourly-current-label {
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.hour-status {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--muted);
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.hourly-empty {
+  padding: 18px 12px !important;
+  color: var(--muted) !important;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .hourly-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .hourly-table thead th {
+    white-space: normal;
+  }
+
+  .hourly-table,
+  .hourly-table tbody,
+  .hourly-table tr,
+  .hourly-table th,
+  .hourly-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .hourly-table tbody tr {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card-alt);
+  }
+
+  .hourly-table tbody tr.hourly-current {
+    border-color: var(--blue);
+  }
+
+  .hourly-table th,
+  .hourly-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: normal;
+  }
+
+  .hourly-table tr > :last-child {
+    border-bottom: 0;
+  }
+
+  .hourly-table tbody th::before,
+  .hourly-table tbody td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-align: left;
+  }
+
+  .hourly-table .hourly-empty {
+    display: block;
+    border: 0;
+    text-align: center;
+  }
+}
+
+.hour-status .dot {
+  flex: 0 0 auto;
 }
 
 .app-footer {
@@ -384,8 +529,40 @@ body {
 }
 
 @media (max-width: 680px) {
+  body {
+    padding: 16px 10px;
+  }
+  .app {
+    padding: 16px 14px 14px;
+  }
   .grid {
     grid-template-columns: 1fr;
+  }
+  .app-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .live-badge {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+  .metric {
+    min-width: 0;
+    padding-left: 12px;
+  }
+  .metric .dot {
+    left: 0;
+  }
+  .metric:last-child {
+    grid-column: 1 / -1;
+  }
+  .metric strong {
+    font-size: 0.88rem;
   }
   .weather-card,
   .alerts-card,

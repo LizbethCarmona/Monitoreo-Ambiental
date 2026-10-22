@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Monitoreo ambiental</title>
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=20261015-alerts-card-fit" />
 </head>
 <body>
 <div class="app">
@@ -13,7 +13,7 @@
       <h1>Monitoreo ambiental</h1>
       <p class="muted" id="subtitulo">Ciudad de México · 3 sensores activos</p>
     </div>
-    <div class="live-badge"><span class="dot green pulse"></span> En vivo</div>
+    <div class="live-badge" id="live-status"><span class="dot gray"></span> Conectando…</div>
   </header>
 
   <main class="grid">
@@ -24,11 +24,15 @@
       </div>
 
       <div class="temp-big" id="temp-actual">—°</div>
-      <div class="temp-label">Temperatura actual</div>
+      <div class="temp-label">Temperatura de la última lectura recibida</div>
+      <div class="muted small" id="lectura-info">Sin lecturas registradas</div>
       <div class="temp-range" id="temp-range">Mín —° · Máx —° hoy</div>
 
       <div class="air-quality-badge" id="calidad-badge">
         <span class="dot green"></span> <span id="calidad-texto">Calidad del aire: —</span>
+      </div>
+      <div class="ods-context muted small">
+        ODS 11 · Seguimiento orientativo de PM2.5 en aire urbano; no es una certificación normativa.
       </div>
 
       <div class="metrics-row">
@@ -52,37 +56,48 @@
 
     <aside class="card alerts-card">
       <div class="alerts-head">
-        <h2>Alertas activas <span class="badge-count" id="alert-count">0</span></h2>
+        <h2><span id="alerts-heading">Alertas activas</span> <span class="badge-count" id="alert-count">0</span></h2>
         <span class="muted small">VALOR / LÍMITE</span>
       </div>
       <ul class="alerts-list" id="alerts-list">
         <li class="muted small" style="padding:12px 0;">Cargando alertas…</li>
       </ul>
-      <a href="#" class="ver-historial" id="ver-historial">Ver historial de alertas →</a>
+      <a href="#" class="ver-historial" id="ver-historial">Ver historial (100 recientes) →</a>
     </aside>
 
     <section class="card hourly-card">
       <div class="hourly-head">
-        <h2>Hoy</h2>
-        <span class="muted small">Temperatura promedio por hora</span>
+        <h2>Lecturas por hora (últimas 24 horas)</h2>
+        <p class="muted small hourly-description">
+          Cada fila resume una hora UTC; solo aparecen horas con lecturas. El color indica solo el estado de PM2.5 y sus límites son orientativos.
+        </p>
       </div>
-      <div class="hourly-row" id="hourly-row"></div>
-      <div class="legend">
-        <span class="muted small">Punto = nivel de PM2.5 en esa hora:</span>
-        <span class="legend-item"><span class="dot green"></span> Normal</span>
-        <span class="legend-item"><span class="dot amber"></span> Advertencia</span>
-        <span class="legend-item"><span class="dot red"></span> Crítico</span>
+      <div class="hourly-table-wrap">
+        <table class="hourly-table">
+          <thead>
+            <tr>
+              <th scope="col">Hora (UTC)</th>
+              <th scope="col">PM2.5 promedio (µg/m³)</th>
+              <th scope="col">Estado de PM2.5</th>
+              <th scope="col">Temperatura promedio (°C)</th>
+            </tr>
+          </thead>
+          <tbody id="hourly-row"></tbody>
+        </table>
       </div>
     </section>
   </main>
 
   <footer class="app-footer" id="app-footer">
-    Datos reales · Fuente: tablas lecturas y alertas (MySQL) vía FastAPI, alimentadas en vivo
-    por el núcleo concurrente en C++ · Umbrales: NOM-025-SSA1-2021 (PM2.5), NOM-010-STPS-2014
-    (CO2), NOM-015-STPS-2001 (temperatura).
+    Fuente: simulador C++ o publicadores MQTT configurados por el equipo. Las mediciones solo
+    son físicas cuando las envía hardware real; no son un pronóstico meteorológico. Los datos
+    se almacenan en MySQL y el dashboard recibe actualizaciones por WebSocket.
+    Los umbrales se leen de la tabla MySQL; PM2.5 por lectura es provisional y sus umbrales de
+    promedio corresponden a ventanas distintas. El panel de alertas muestra eventos puntuales;
+    los promedios calculados aún no se persisten como alertas.
   </footer>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20261015-hourly-table"></script>
 </body>
 </html>

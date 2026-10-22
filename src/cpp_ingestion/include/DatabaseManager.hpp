@@ -1,9 +1,11 @@
 #pragma once
 #include <mutex>
+#include <map>
 #include <string>
 #include <unordered_set>
 #include "MetricaSensor.hpp"
 #include "Alerta.hpp"
+#include "Umbrales.hpp"
 
 // Conexion real a la base de datos (MySQL 8, ver src/database/schema.sql),
 // usando el conector C de MariaDB (ABI/protocolo compatible con MySQL;
@@ -40,14 +42,16 @@ public:
     // timestamp, error 1062) se consideran "manejados" y no se cuentan como
     // error fatal, solo se omiten (igual que carga_concurrente.py).
     bool guardarLecturaTransaccional(const MetricaSensor& dato, const Alerta* alerta_opcional);
+    UmbralesLectura cargarUmbralesLectura();
 
     long totalLecturasGuardadas() const;
     long totalAlertasGuardadas() const;
     long totalDuplicadosRechazados() const;
+    std::string ultimoError() const;
 
 private:
     bool ejecutar(const std::string& sql);
-    void asegurarSensorRegistrado(const std::string& sensor_id);
+    bool asegurarSensorRegistrado(const std::string& sensor_id);
     static std::string timestampIso8601AFechaMysql(const std::string& iso8601);
 
     mutable std::mutex mtx_;
@@ -60,4 +64,5 @@ private:
     long total_lecturas_ = 0;
     long total_alertas_ = 0;
     long total_duplicados_ = 0;
+    std::string ultimo_error_;
 };

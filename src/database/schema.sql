@@ -55,8 +55,9 @@ CREATE TABLE IF NOT EXISTS lecturas (
 --           'promedio_8h'  = se compara contra el promedio movil de 8 horas (NOM-010, CO2)
 --           'promedio_24h' = se compara contra el promedio movil de 24 horas (NOM-025, PM2.5)
 -- fuente:   de donde sale el limite (norma o 'PROVISIONAL' si lo definio el equipo)
--- Normas aprobadas por el profesor: NOM-025-SSA1-2021 (PM2.5), NOM-010-STPS-2014 (CO2)
--- y NOM-015-STPS-2001 (temperatura). Las dos ultimas son normas laborales.
+-- Referencias revisadas: NOM-025-SSA1-2021 (PM2.5), NOM-010-STPS-2014 (CO2)
+-- y NOM-015-STPS-2001 (estrés térmico ocupacional). No son límites universales para
+-- lecturas sintéticas ambientales; NOM-015 requiere ITGBH y regimen de trabajo.
 CREATE TABLE IF NOT EXISTS umbrales (
   umbral_id    INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   metrica      ENUM('pm25','co2','tmp') NOT NULL,
@@ -102,25 +103,33 @@ INSERT IGNORE INTO sensores (sensor_id, nombre) VALUES
   ('sensor_02', 'Sensor 02'),
   ('sensor_03', 'Sensor 03');
 
--- LIMITES POR NORMA (aprobadas por el profesor):
---  * PM2.5: NOM-025-SSA1-2021, 41 ug/m3 en promedio de 24 h (verificar valor final en el DOF).
---  * CO2:   NOM-010-STPS-2014. VLE-PPT = 5,000 ppm (promedio 8 h) y VLE-CT = 30,000 ppm (15 min).
---           La Tabla 17 de la norma toma 0.50 x VLE como nivel que obliga a actuar,
---           por eso advertencia = 2,500 ppm. Confirmar valores en la Tabla I.1 del DOF.
---  * Temp:  NOM-015-STPS-2001. Tabla 1 (ITGBH, regimen ligero, 100% exposicion) = 30.0 C;
---           numeral 7.3.5: arriba de 32.2 C solo se permite exposicion momentanea.
---           LIMITACION: la norma usa el indice ITGBH (requiere humedad y temperatura de
---           globo); los sensores solo miden temperatura del aire, que se usa como aproximacion.
--- Los limites PM2.5 por lectura (35 y 75) son PROVISIONALES: la norma solo fija promedio de 24 h.
+-- REFERENCIAS Y LIMITACIONES:
+--  * PM2.5: NOM-025-SSA1-2021, Tabla 1, fija una transicion para el promedio de 24 h:
+--    41 (Año 1), 33 (Año 3) y 25 ug/m3 (Año 5). Para 2026-10-14 se usa la fase Año 5.
+--    La NOM no define niveles de alerta "advertencia/critico" para lecturas instantaneas.
+--  * CO2: NOM-010-STPS-2014, Apendice I, Tabla I.1 (PDF p. 53): VLE-PPT 5,000 ppm y
+--    VLE-CT 30,000 ppm; este ultimo aplica a un periodo de hasta 15 minutos en centros de
+--    trabajo, no a una lectura instantanea. El numeral 4.29 define el nivel de accion como
+--    la mitad del VLE-PPT (2,500 ppm); es una referencia ocupacional, no alerta ambiental.
+--  * Temperatura: NOM-015-STPS-2001 regula estres termico mediante ITGBH, carga de trabajo
+--    y regimen de exposicion/recuperacion (Tabla 1, PDF p. 5). Los sensores miden aire, no
+--    ITGBH; por ello 30.0/32.2 C solo son heuristicas provisionales del proyecto.
+--  * Los limites puntuales PM2.5 (35/75), CO2 instantaneo (30,000) y temperatura (30/32.2)
+--    son criterios de demostracion; no determinan cumplimiento normativo.
+-- Fuentes oficiales:
+-- NOM-025: https://www.dof.gob.mx/nota_detalle.php?codigo=5633855&fecha=27/10/2021
+-- NOM-010: https://www.gob.mx/cms/uploads/attachment/file/680155/NOM-010-STPS-2014.pdf
+--          https://dof.gob.mx/normasOficiales/5359/stps2a11_C/stps2a11_C.html
+-- NOM-015: https://www.stps.gob.mx/bp/secciones/dgsst/normatividad/normas/Nom-015.pdf
 INSERT IGNORE INTO umbrales (metrica, nivel, aplica_a, valor_limite, fuente) VALUES
-  ('pm25', 'critico',     'promedio_24h', 41.00,    'NOM-025-SSA1-2021 (verificar en DOF)'),
+  ('pm25', 'critico',     'promedio_24h', 25.00,    'NOM-025-SSA1-2021, Tabla 1, fase Año 5 (2026-10-14)'),
   ('pm25', 'advertencia', 'lectura',      35.00,    'PROVISIONAL (definido por el equipo)'),
   ('pm25', 'critico',     'lectura',      75.00,    'PROVISIONAL (definido por el equipo)'),
-  ('co2',  'advertencia', 'promedio_8h',  2500.00,  'NOM-010-STPS-2014: 0.50 x VLE-PPT (Tabla 17)'),
-  ('co2',  'critico',     'promedio_8h',  5000.00,  'NOM-010-STPS-2014: VLE-PPT (Apendice I)'),
-  ('co2',  'critico',     'lectura',      30000.00, 'NOM-010-STPS-2014: VLE-CT (Apendice I)'),
-  ('tmp',  'advertencia', 'lectura',      30.00,    'NOM-015-STPS-2001: Tabla 1, regimen ligero 100%'),
-  ('tmp',  'critico',     'lectura',      32.20,    'NOM-015-STPS-2001: numeral 7.3.5');
+  ('co2',  'advertencia', 'promedio_8h',  2500.00,  'Referencia NOM-010-STPS-2014 4.29; uso ambiental provisional'),
+  ('co2',  'critico',     'promedio_8h',  5000.00,  'Referencia NOM-010-STPS-2014 Tabla I.1; uso ambiental provisional'),
+  ('co2',  'critico',     'lectura',      30000.00, 'PROVISIONAL: VLE-CT requiere periodo de hasta 15 min'),
+  ('tmp',  'advertencia', 'lectura',      30.00,    'PROVISIONAL: aire; NOM-015 evalua ITGBH ocupacional'),
+  ('tmp',  'critico',     'lectura',      32.20,    'PROVISIONAL: aire; NOM-015 evalua ITGBH ocupacional');
 
 -- ---------------------------------------------------------------------
 -- EJEMPLO: insercion transaccional (lo que hara DatabaseManager en la semana 4)

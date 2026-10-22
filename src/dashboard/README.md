@@ -1,8 +1,8 @@
 # Dashboard web (`src/dashboard`)
 
-Interfaz visual del proyecto: tarjeta de clima/calidad del aire actual, pronóstico de
-temperatura por hora y panel de alertas activas, con **datos reales** leídos de MySQL a
-través de la API. Replica el mockup de referencia acordado por el equipo. Corresponde al
+Interfaz visual del proyecto: tarjeta ambiental, observaciones por hora y panel de alertas,
+con datos de MySQL consultados por API. Las fuentes admitidas son simulación C++ o MQTT.
+Replica el mockup de referencia acordado por el equipo. Corresponde al
 componente "Dashboard" del diagrama de arquitectura
 ([docs/arquitectura.md](../../docs/arquitectura.md)) y adelanta el Sprint 4 (Semana 7).
 
@@ -10,9 +10,16 @@ componente "Dashboard" del diagrama de arquitectura
 
 Se sirve automáticamente junto con la API (no es necesario un servidor aparte):
 
+```powershell
+Set-Location src\api_fastapi
+..\..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+En Linux/macOS, con el entorno virtual activado:
+
 ```bash
 cd src/api_fastapi
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Abre `http://127.0.0.1:8000/dashboard/` en el navegador.
@@ -21,16 +28,41 @@ Abre `http://127.0.0.1:8000/dashboard/` en el navegador.
 
 - HTML/CSS/JS plano (sin frameworks ni build step) para que cualquiera del equipo lo pueda
   editar sin instalar nada extra.
-- `app.js` hace `fetch()` a `/estado-clima` y `/alertas` (montado como archivos estáticos
-  dentro de la misma app de FastAPI, para evitar problemas de CORS) y repinta la interfaz
-  cada 5 segundos (`REFRESCO_MS`), simulando actualización en tiempo real mientras no existe
-  el WebSocket (Sprint 3, Semana 6).
+- El dashboard no es una aplicación o contenedor independiente: FastAPI sirve estos archivos
+  estáticos en `/dashboard/`. No requiere Node.js. MySQL debe estar disponible para que la API
+  obtenga los datos; Docker solo es necesario si el productor de datos usa MQTT con Mosquitto.
+- Al abrir el dashboard, `app.js` carga el estado inicial y las alertas mediante REST, y se
+  conecta a `WS /ws/dashboard`. WebSocket mantiene abierto el canal navegador–API: envía al
+  cliente un snapshot JSON inicial y la API comparte una consulta MySQL para difundir el estado
+  y las alertas aproximadamente cada 2 s a los clientes conectados. El cliente manda `ping`
+  cada 20 s y recibe `pong`. WebSocket solo comunica actualizaciones del dashboard; no recibe
+  los mensajes MQTT ni escribe lecturas en MySQL. Si el canal se desconecta, REST consulta cada
+  cinco segundos mientras el cliente intenta reconectar. El historial se solicita por
+  `/alertas/historial`.
+- “Alertas activas” significa alertas que aún no se marcaron como atendidas; son eventos
+  puntuales guardados, no una predicción ni una evaluación continua. El panel muestra hasta
+  20 recientes y permite consultar hasta 100 del historial.
 - Los colores de los puntos (verde/amarillo/rojo) se calculan a partir de los campos
   `*_nivel` que ya vienen en la respuesta de la API (`normal` | `advertencia` | `critico`),
   el mismo vocabulario que usa `ThreadPoolConsumidor::evaluarUmbrales` en el núcleo
   concurrente de C++.
+- La tabla de las últimas 24 h muestra por fila una hora con lecturas, el promedio de PM2.5
+  (`µg/m³`), su clasificación y la temperatura promedio (`°C`). El color solo corresponde a
+  la clasificación de PM2.5, basada en los límites puntuales provisionales del prototipo; las
+  horas se presentan en UTC.
+- En pantallas estrechas, la tabla se transforma en filas tipo ficha con el nombre de cada
+  dato visible, para conservar legibles sus valores y unidades.
+- La tarjeta de alertas activas se mantiene como un panel independiente junto a la tarjeta
+  ambiental. Su lista tiene desplazamiento propio cuando hay muchas alertas; el enlace permite
+  cambiar entre alertas activas (hasta 20 recientes) y el historial (hasta 100 recientes).
+  En pantallas estrechas, las tarjetas se apilan y la lista conserva su desplazamiento dentro
+  del borde.
 
-## Pendiente (próximos sprints)
+## Alcance y límites
 
-- Reemplazar el polling por WebSocket para actualización push real.
-- Historial de alertas (el enlace "Ver historial de alertas" es un placeholder).
+- El rótulo de ciudad se configura con `CIUDAD_NOMBRE`; el esquema actual no asocia una
+  ubicación a cada sensor.
+- La temperatura presentada es la lectura más reciente almacenada, no un pronóstico
+  meteorológico. La etiqueta «Fuente» identifica el sensor de esa última lectura; con el
+  simulador, los valores son sintéticos y no provienen de hardware físico. El origen de los
+  mensajes puede ser el simulador o un publicador MQTT configurado.

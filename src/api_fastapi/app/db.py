@@ -23,6 +23,7 @@ def conectar():
         user=os.getenv("MYSQL_USER", "root"),
         password=password,
         database=os.getenv("MYSQL_DATABASE", "monitoreo_ambiental"),
+        time_zone="+00:00",
         # use_pure=True evita la extension en C de mysql-connector-python,
         # que no es segura para usarse desde varios hilos del pool de
         # workers de uvicorn al mismo tiempo (se observo un crash nativo
