@@ -43,14 +43,29 @@
 build/
 Build/
 build-*/
+bin/
 
-# CMake generated files
+# CMake generated files (el Makefile propio del proyecto SI se versiona;
+# solo se ignora el que CMake genera dentro de las carpetas build*/)
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
+build/Makefile
+build-*/Makefile
 install_manifest.txt
 compile_commands.json
+
+# Binarios de las pruebas de carga Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Artefactos de los simuladores Lua (se regeneran en cada corrida)
+src/cpp_ingestion/iot_lua_sim/scripts/*.txt
+
+# Variables de entorno / credenciales locales
+.env
 
 # Temporary files
 *.tmp

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Monitoreo ambiental</title>
+<link rel="stylesheet" href="styles.css?v=20261015-alerts-card-fit" />
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <div>
+      <h1>Monitoreo ambiental</h1>
+      <p class="muted" id="subtitulo">Ciudad de México · 3 sensores activos</p>
+    </div>
+    <div class="live-badge" id="live-status"><span class="dot gray"></span> Conectando…</div>
+  </header>
+
+  <main class="grid">
+    <section class="card weather-card">
+      <div class="weather-head">
+        <div class="city" id="ciudad">Ciudad de México</div>
+        <div class="date" id="fecha">—</div>
+      </div>
+
+      <div class="temp-big" id="temp-actual">—°</div>
+      <div class="temp-label">Temperatura de la última lectura recibida</div>
+      <div class="muted small" id="lectura-info">Sin lecturas registradas</div>
+      <div class="temp-range" id="temp-range">Mín —° · Máx —° hoy</div>
+
+      <div class="air-quality-badge" id="calidad-badge">
+        <span class="dot green"></span> <span id="calidad-texto">Calidad del aire: —</span>
+      </div>
+      <div class="ods-context muted small">
+        ODS 11 · Seguimiento orientativo de PM2.5 en aire urbano; no es una certificación normativa.
+      </div>
+
+      <div class="metrics-row">
+        <div class="metric">
+          <span class="dot green" id="dot-pm25"></span>
+          <strong id="pm25">— µg/m³</strong>
+          <span class="metric-label">PM2.5</span>
+        </div>
+        <div class="metric">
+          <span class="dot green" id="dot-co2"></span>
+          <strong id="co2">— ppm</strong>
+          <span class="metric-label">CO2</span>
+        </div>
+        <div class="metric">
+          <span class="dot green" id="dot-pm25-24h"></span>
+          <strong id="pm25-24h">— µg/m³</strong>
+          <span class="metric-label" id="pm25-24h-label">PM2.5 promedio 24 h (límite —)</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="card alerts-card">
+      <div class="alerts-head">
+        <h2><span id="alerts-heading">Alertas activas</span> <span class="badge-count" id="alert-count">0</span></h2>
+        <span class="muted small">VALOR / LÍMITE</span>
+      </div>
+      <ul class="alerts-list" id="alerts-list">
+        <li class="muted small" style="padding:12px 0;">Cargando alertas…</li>
+      </ul>
+      <a href="#" class="ver-historial" id="ver-historial">Ver historial (100 recientes) →</a>
+    </aside>
+
+    <section class="card hourly-card">
+      <div class="hourly-head">
+        <h2>Lecturas por hora (últimas 24 horas)</h2>
+        <p class="muted small hourly-description">
+          Cada fila resume una hora UTC; solo aparecen horas con lecturas. El color indica solo el estado de PM2.5 y sus límites son orientativos.
+        </p>
+      </div>
+      <div class="hourly-table-wrap">
+        <table class="hourly-table">
+          <thead>
+            <tr>
+              <th scope="col">Hora (UTC)</th>
+              <th scope="col">PM2.5 promedio (µg/m³)</th>
+              <th scope="col">Estado de PM2.5</th>
+              <th scope="col">Temperatura promedio (°C)</th>
+            </tr>
+          </thead>
+          <tbody id="hourly-row"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer" id="app-footer">
+    Fuente: simulador C++ o publicadores MQTT configurados por el equipo. Las mediciones solo
+    son físicas cuando las envía hardware real; no son un pronóstico meteorológico. Los datos
+    se almacenan en MySQL y el dashboard recibe actualizaciones por WebSocket.
+    Los umbrales se leen de la tabla MySQL; PM2.5 por lectura es provisional y sus umbrales de
+    promedio corresponden a ventanas distintas. El panel de alertas muestra eventos puntuales;
+    los promedios calculados aún no se persisten como alertas.
+  </footer>
+</div>
+
+<script src="app.js?v=20261015-hourly-table"></script>
+</body>
+</html>

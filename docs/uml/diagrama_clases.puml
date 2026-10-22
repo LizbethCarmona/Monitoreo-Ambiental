@@ -22,8 +22,7 @@ class ColaConcurrente {
 
 class SensorHiloProductor {
     - sensor_id: String
-    - puerto_mqtt: int
-    + recibirLecturasMQTT(): void
+    + simularLecturas(): void
     + enviarACola(data: MetricaSensor): void
 }
 
@@ -44,6 +43,11 @@ class DatabaseManager {
 class APIServiceFastAPI {
     + getEstadoClima(): JSON
     + getAlertas(): JSON
+    + websocketDashboard(): JSON
+}
+
+class DashboardCliente {
+    + recibirSnapshot(estado: JSON, alertas: JSON): void
 }
 
 SensorHiloProductor ..> MetricaSensor : crea
@@ -52,5 +56,11 @@ SensorHiloProductor --> ColaConcurrente : produce
 ThreadPoolConsumidor --> ColaConcurrente : consume
 ThreadPoolConsumidor --> DatabaseManager : persiste datos
 APIServiceFastAPI --> DatabaseManager : consulta datos
+APIServiceFastAPI --> DashboardCliente : difunde snapshots por WS /ws/dashboard
+
+note on link
+  WebSocket mantiene el canal abierto y envia estado y alertas
+  aproximadamente cada 2 s. No ingresa ni persiste lecturas.
+end note
 
 @enduml
