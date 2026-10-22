@@ -12,8 +12,8 @@ de agregados con detección de umbrales de contaminación.
 | Product Owner | Ríos Olivares César Antonio |
 | Scrum Master | Carmona Orea Lizbeth |
 | Dev Team (Base de Datos) | Delgadillo Escartín Eduardo Abraham |
-| Dev Team (Núcleo concurrente) | Gutiérrez Ponce Sebastián |
-| Dev Team (Servicio/Red) | Gutiérrez Ponce Sebastián |
+| Dev Team (Núcleo concurrente) | Gutiérrez Ponce Sebastián, Delgadillo Escartín Eduardo Abraham |
+| Dev Team (Servicio/Red) | Gutiérrez Ponce Sebastián, Carmona Orea Lizbeth |
 
 ## Documentación
 
