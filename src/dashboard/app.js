@@ -21,6 +21,11 @@ const mensajeFuente = document.getElementById("app-footer").textContent.trim();
 
 async function obtenerJSON(ruta) {
   const resp = await fetch(ruta, { cache: "no-store" });
+  if (resp.status === 401) {
+    const destino = `${location.pathname}${location.search}`;
+    location.replace(`/login?next=${encodeURIComponent(destino)}`);
+    throw new Error("La sesión terminó; inicia sesión nuevamente.");
+  }
   if (!resp.ok) throw new Error(`${ruta} -> HTTP ${resp.status}`);
   return resp.json();
 }
@@ -229,8 +234,13 @@ function conectarWebSocket() {
     }
   });
 
-  socket.addEventListener("close", () => {
+  socket.addEventListener("close", (event) => {
     clearInterval(latido);
+    if (event.code === 1008) {
+      const destino = `${location.pathname}${location.search}`;
+      location.replace(`/login?next=${encodeURIComponent(destino)}`);
+      return;
+    }
     estado.innerHTML = '<span class="dot amber"></span> REST provisional · reconectando WebSocket…';
     if (sondeoCompatibilidad === null) {
       sondeoCompatibilidad = setInterval(refrescar, 5000);
@@ -266,6 +276,17 @@ document.getElementById("ver-historial").addEventListener("click", async (event)
       : "No se pudo cargar el historial; verifica que la API y MySQL estén disponibles.";
     lista.appendChild(mensaje);
     document.getElementById("app-footer").textContent = mensaje.textContent;
+  }
+});
+
+document.getElementById("logout-button").addEventListener("click", async () => {
+  try {
+    const response = await fetch("/auth/logout", { method: "POST", cache: "no-store" });
+    if (!response.ok) throw new Error(`No se pudo cerrar sesión: HTTP ${response.status}`);
+    location.replace("/login");
+  } catch (error) {
+    console.error("No se pudo cerrar sesión:", error);
+    document.getElementById("app-footer").textContent = "No se pudo cerrar sesión; inténtalo de nuevo.";
   }
 });
 

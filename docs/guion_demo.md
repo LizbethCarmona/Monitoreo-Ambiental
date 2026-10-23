@@ -3,10 +3,15 @@
 ## Orden de ejecución
 
 1. Confirma MySQL en ejecución, que existe el esquema `monitoreo_ambiental` y que la API usa
-   una cuenta de aplicación; configura `MYSQL_*` solo en la terminal local.
+   una cuenta de aplicación; configura `MYSQL_*` en la terminal PowerShell desde la que se
+   iniciará Uvicorn. Las variables no se transfieren entre terminales; si Uvicorn ya estaba
+   activo en otra, detenlo con `Ctrl+C` y vuelve a iniciarlo en la terminal configurada.
 2. Para la demostración MQTT, inicia Docker Desktop y el contenedor del broker Mosquitto desde
    `src/api_fastapi` (`docker compose up -d mqtt`). Este contenedor solo recibe/publica mensajes
-   MQTT; no ejecuta la API, MySQL ni el dashboard. La ruta C++ directa a MySQL no requiere Docker.
+   MQTT en esta demo local; la API y el dashboard se inician por separado y MySQL es externo.
+   Para el despliegue público multiusuario, el Compose también inicia FastAPI y Caddy con HTTPS;
+   sigue la [guía de despliegue](../src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
+   La ruta C++ directa a MySQL no requiere Docker.
 3. Enciende FastAPI con `MQTT_ENABLED=true`; revisa `/salud` y comprueba MySQL y MQTT.
 4. Abre `/dashboard/`; comprueba `En vivo · WebSocket` y observa las actualizaciones. Explica
    que la página abre un canal persistente con FastAPI y recibe por él un snapshot JSON del

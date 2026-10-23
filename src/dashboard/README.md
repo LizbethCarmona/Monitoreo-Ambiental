@@ -24,13 +24,25 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Abre `http://127.0.0.1:8000/dashboard/` en el navegador.
 
+Antes de iniciar Uvicorn, configura en esa misma terminal las variables `MYSQL_HOST`,
+`MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD` y `MYSQL_DATABASE` que correspondan a tu MySQL.
+PowerShell no las comparte automáticamente con otras terminales. Si Uvicorn ya está activo
+en una terminal sin esas variables, detenlo con `Ctrl+C` y reinícialo en la terminal configurada.
+
+El acceso local de desarrollo no requiere iniciar sesión por defecto. Para que varias personas
+entren desde equipos distintos por Internet, se debe desplegar FastAPI con cuentas individuales
+y HTTPS mediante Docker Compose y Caddy. Eso requiere un servidor público, un dominio y una
+instancia MySQL accesible desde el servidor. Consulta la
+[guía de despliegue multiusuario](../api_fastapi/README.md#despliegue-multiusuario-en-internet).
+
 ## Cómo funciona
 
 - HTML/CSS/JS plano (sin frameworks ni build step) para que cualquiera del equipo lo pueda
   editar sin instalar nada extra.
 - El dashboard no es una aplicación o contenedor independiente: FastAPI sirve estos archivos
   estáticos en `/dashboard/`. No requiere Node.js. MySQL debe estar disponible para que la API
-  obtenga los datos; Docker solo es necesario si el productor de datos usa MQTT con Mosquitto.
+  obtenga los datos. Para la demo local Docker es opcional, salvo que se use MQTT con Mosquitto;
+  para el despliegue multiusuario, Compose ejecuta FastAPI y Caddy delante de MySQL externo.
 - Al abrir el dashboard, `app.js` carga el estado inicial y las alertas mediante REST, y se
   conecta a `WS /ws/dashboard`. WebSocket mantiene abierto el canal navegador–API: envía al
   cliente un snapshot JSON inicial y la API comparte una consulta MySQL para difundir el estado

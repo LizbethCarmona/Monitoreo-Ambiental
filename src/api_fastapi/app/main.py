@@ -14,16 +14,23 @@ evitar problemas de CORS.
 import asyncio
 import logging
 import os
+import secrets
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.concurrency import run_in_threadpool
 from mysql.connector import Error as MySQLError
 
 from . import db
+from . import auth
 from .ingestion import IngestorMQTT
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +84,7 @@ def _crear_actualizacion() -> tuple[dict, dict]:
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI):
+    auth.validar_configuracion()
     tarea_dashboard = asyncio.create_task(_hub_dashboard.ejecutar())
     mqtt_habilitado = os.getenv("MQTT_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
     if mqtt_habilitado:
@@ -101,6 +109,91 @@ app = FastAPI(
     version="0.2.0",
     lifespan=_lifespan,
 )
+
+_LOGIN_DIR = Path(__file__).resolve().parents[2] / "dashboard"
+_login_limitador = auth.LimitadorAccesos()
+
+
+def _ruta_publica(path: str) -> bool:
+    return path in {"/login", "/auth/login", "/auth/logout", "/healthz"} or path in {
+        "/dashboard/login.css",
+        "/dashboard/login.js",
+    }
+
+
+@app.middleware("http")
+async def autenticar_solicitudes(request: Request, call_next):
+    if not auth.enabled() or _ruta_publica(request.url.path):
+        return await call_next(request)
+
+    usuarios = auth.cargar_usuarios()
+    usuario = request.session.get("usuario")
+    if (
+        not usuario
+        or usuario not in usuarios
+        or not auth.sesion_vigente(request.session)
+    ):
+        request.session.clear()
+        if request.url.path == "/" or request.url.path.startswith("/dashboard"):
+            return RedirectResponse("/login", status_code=303)
+        return JSONResponse(
+            {"detail": "Autenticación requerida."},
+            status_code=401,
+            headers={"Cache-Control": "no-store"},
+        )
+    return await call_next(request)
+
+
+@app.get("/login", include_in_schema=False)
+async def pagina_login() -> Response:
+    if not auth.enabled():
+        return RedirectResponse("/dashboard/", status_code=303)
+    return FileResponse(_LOGIN_DIR / "login.html", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/auth/login", include_in_schema=False)
+async def iniciar_sesion(request: Request) -> Response:
+    if not auth.enabled():
+        return JSONResponse({"detail": "El inicio de sesión no está habilitado."}, status_code=404)
+    cliente = request.client.host if request.client else "unknown"
+    espera = _login_limitador.esperar(cliente)
+    if espera:
+        return JSONResponse(
+            {"detail": "Demasiados intentos. Espera un minuto antes de volver a intentarlo."},
+            status_code=429,
+            headers={"Retry-After": str(espera), "Cache-Control": "no-store"},
+        )
+    try:
+        datos = await request.json()
+    except (ValueError, UnicodeDecodeError):
+        datos = {}
+    usuario = datos.get("usuario", "") if isinstance(datos, dict) else ""
+    contrasena = datos.get("contrasena", "") if isinstance(datos, dict) else ""
+    if not isinstance(usuario, str) or not isinstance(contrasena, str):
+        usuario = contrasena = ""
+    hash_guardado = auth.cargar_usuarios().get(usuario)
+    if not auth.verificar_contrasena(contrasena, hash_guardado or "") or hash_guardado is None:
+        return JSONResponse(
+            {"detail": "Usuario o contraseña incorrectos."},
+            status_code=401,
+            headers={"Cache-Control": "no-store"},
+        )
+    request.session.clear()
+    request.session["usuario"] = usuario
+    request.session["emitida"] = int(time.time())
+    return JSONResponse({"autenticado": True}, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/auth/logout", include_in_schema=False)
+async def cerrar_sesion(request: Request) -> Response:
+    request.session.clear()
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/healthz", include_in_schema=False)
+async def healthz() -> dict:
+    return {"estado": "ok"}
+
 
 CIUDAD_NOMBRE = os.getenv("CIUDAD_NOMBRE", "Ciudad de Mexico")
 
@@ -312,6 +405,25 @@ def get_historial_alertas(limite: int = Query(default=100, ge=1, le=500)) -> dic
 
 @app.websocket("/ws/dashboard")
 async def websocket_dashboard(websocket: WebSocket) -> None:
+    vence_sesion = None
+    if auth.enabled():
+        usuario = websocket.session.get("usuario")
+        emitida = websocket.session.get("emitida")
+        if (
+            not usuario
+            or usuario not in auth.cargar_usuarios()
+            or not auth.sesion_vigente(websocket.session)
+        ):
+            await websocket.close(code=1008)
+            return
+        origen = websocket.headers.get("origin")
+        host = websocket.headers.get("host", "")
+        if not origen or urlsplit(origen).netloc.lower() != host.lower():
+            await websocket.close(code=1008)
+            return
+        vence_sesion = asyncio.get_running_loop().time() + max(
+            0, auth.session_max_age() - (time.time() - emitida)
+        )
     await websocket.accept()
     _hub_dashboard.conexiones.add(websocket)
     try:
@@ -323,7 +435,14 @@ async def websocket_dashboard(websocket: WebSocket) -> None:
         }
         await websocket.send_json(_hub_dashboard.ultima_actualizacion)
         while True:
-            mensaje = await websocket.receive_text()
+            try:
+                mensaje = await asyncio.wait_for(websocket.receive_text(), timeout=20)
+            except asyncio.TimeoutError:
+                if vence_sesion is not None and asyncio.get_running_loop().time() >= vence_sesion:
+                    await websocket.close(code=1008)
+                    _hub_dashboard.conexiones.discard(websocket)
+                    return
+                continue
             if mensaje == "ping":
                 await websocket.send_json({"tipo": "pong"})
     except WebSocketDisconnect:
@@ -370,3 +489,15 @@ def get_salud() -> dict:
 _DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "dashboard"
 if _DASHBOARD_DIR.is_dir():
     app.mount("/dashboard", StaticFiles(directory=str(_DASHBOARD_DIR), html=True), name="dashboard")
+
+_ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
+if _ALLOWED_HOSTS:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("DASHBOARD_SESSION_SECRET") or secrets.token_urlsafe(48),
+    session_cookie="monitoreo_session",
+    max_age=auth.session_max_age(),
+    same_site="strict",
+    https_only=auth.cookie_secure(),
+)

@@ -5,10 +5,12 @@ instalar, cómo preparar la base de datos sin MySQL Workbench, cómo iniciar la 
 qué hacer si algo no funciona. Los comandos son para **Windows 10/11 y PowerShell**.
 
 > **Alcance:** el proyecto de clase se demuestra con datos sintéticos generados por simuladores.
-> No requiere ni contempla instalar sensores físicos. El broker MQTT incluido permite
+> No requiere ni contempla instalar sensores físicos. El broker MQTT de desarrollo permite
 > conexiones anónimas únicamente en el equipo local; no lo expongas a Internet ni a una red.
-> Docker Desktop se usa solo para ejecutar ese broker Mosquitto en la ruta MQTT; no ejecuta
-> MySQL, FastAPI ni el dashboard. Si vas a usar únicamente el productor C++, no necesitas Docker.
+> Docker Compose también contiene un despliegue separado para FastAPI y Caddy con login y HTTPS;
+> MySQL sigue siendo externo. Si quieres compartir el dashboard desde varios equipos por
+> Internet, consulta la [guía de despliegue multiusuario](../src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
+> Si vas a usar únicamente el productor C++, no necesitas Docker.
 
 ## 1. ¿Qué voy a ejecutar?
 
@@ -28,10 +30,10 @@ compilarlo para ejecutar la demo MQTT descrita en las secciones principales.
 ### En palabras sencillas: qué es cada componente
 
 - **Docker Desktop** es el programa que permite ejecutar contenedores en Windows; **Docker
-  Compose** lee `src/api_fastapi/compose.yaml` y arranca el contenedor local **Mosquitto**.
-  Ese contenedor es el **broker**, el punto intermedio que recibe y reenvía mensajes MQTT.
-  En este proyecto, Docker se usa solo para el broker de la ruta MQTT: no ejecuta MySQL,
-  FastAPI ni el dashboard. La ruta C++ directa a MySQL no requiere Docker.
+  Compose** lee `src/api_fastapi/compose.yaml`. Para la demo local se usa `docker compose up -d
+  mqtt` y arranca solo **Mosquitto**, el broker que recibe y reenvía mensajes MQTT. Para el
+  despliegue público, el mismo Compose puede ejecutar FastAPI y Caddy con HTTPS; MySQL siempre
+  es externo y la ruta C++ directa a MySQL no requiere Docker.
 - **MQTT** es el protocolo de mensajes entre el simulador/publicador y el suscriptor de la API.
   **FastAPI** es el código de la API; **Uvicorn** es el servidor que lo ejecuta y sirve el
   dashboard en el navegador.
@@ -71,8 +73,8 @@ Necesitas conexión a Internet durante la instalación y al menos 5 GB de espaci
    - crea una contraseña de administrador `root` y guárdala en un lugar seguro;
    - deja el servicio de MySQL configurado para iniciarse con Windows.
 
-3. **Docker Desktop para Windows**, necesario solo para ejecutar el broker Mosquitto de la ruta
-   MQTT:
+3. **Docker Desktop para Windows**, necesario para el broker de la ruta MQTT. También se usa
+   Docker Engine en un servidor Linux si se desea desplegar para acceso multiusuario:
    [descarga oficial](https://www.docker.com/products/docker-desktop/). Completa la instalación,
    acepta WSL 2 si el instalador lo solicita, abre Docker Desktop y espera hasta que indique
    que el motor está en ejecución. Verifica en PowerShell:
@@ -216,6 +218,9 @@ Se usan dos terminales de PowerShell. Antes de comenzar, confirma que MySQL est�
 Docker Desktop muestra su motor en ejecución. Docker Compose inicia un contenedor local de
 Mosquitto para transportar las lecturas MQTT; la API, MySQL y el dashboard se ejecutan por
 separado. Si eliges la ruta C++ directa a MySQL en vez de MQTT, no hace falta iniciar Docker.
+Las variables `MYSQL_*` se configuran en la **Terminal 1**, y Uvicorn debe iniciarse desde esa
+misma terminal: PowerShell no las comparte con otra ventana. La Terminal 2 se usa para el
+simulador; no es necesario configurar las variables MySQL allí.
 
 ### Terminal 1: iniciar el broker y la API
 
@@ -395,7 +400,9 @@ conectados. Revisa también que la API y el simulador se iniciaron desde las rut
 ### La aplicación se queja de que falta `MYSQL_PASSWORD`
 
 Define las variables de conexión en la misma ventana de PowerShell desde la que inicias la API.
-Las variables no se transfieren automáticamente entre terminales distintas.
+Las variables no se transfieren automáticamente entre terminales distintas. Si Uvicorn ya está
+ejecutándose en otra terminal, pulsa `Ctrl+C` allí y vuelve a iniciarlo desde la ventana donde
+configuraste `MYSQL_PASSWORD`.
 
 ## 9. Ejecutar las pruebas automáticas de la API (opcional)
 
