@@ -3,7 +3,9 @@
 ## Orden de ejecución
 
 1. Confirma MySQL en ejecución, que existe el esquema `monitoreo_ambiental` y que la API usa
-   una cuenta de aplicación; configura `MYSQL_*` solo en la terminal local.
+   una cuenta de aplicación; configura `MYSQL_*` en la terminal PowerShell desde la que se
+   iniciará Uvicorn. Las variables no se transfieren entre terminales; si Uvicorn ya estaba
+   activo en otra, detenlo con `Ctrl+C` y vuelve a iniciarlo en la terminal configurada.
 2. Para la demostración MQTT, inicia Docker Desktop y el contenedor del broker Mosquitto desde
    `src/api_fastapi` (`docker compose up -d mqtt`). Este contenedor solo recibe/publica mensajes
    MQTT en esta demo local; la API y el dashboard se inician por separado y MySQL es externo.

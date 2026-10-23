@@ -218,6 +218,9 @@ Se usan dos terminales de PowerShell. Antes de comenzar, confirma que MySQL est�
 Docker Desktop muestra su motor en ejecución. Docker Compose inicia un contenedor local de
 Mosquitto para transportar las lecturas MQTT; la API, MySQL y el dashboard se ejecutan por
 separado. Si eliges la ruta C++ directa a MySQL en vez de MQTT, no hace falta iniciar Docker.
+Las variables `MYSQL_*` se configuran en la **Terminal 1**, y Uvicorn debe iniciarse desde esa
+misma terminal: PowerShell no las comparte con otra ventana. La Terminal 2 se usa para el
+simulador; no es necesario configurar las variables MySQL allí.
 
 ### Terminal 1: iniciar el broker y la API
 
@@ -397,7 +400,9 @@ conectados. Revisa también que la API y el simulador se iniciaron desde las rut
 ### La aplicación se queja de que falta `MYSQL_PASSWORD`
 
 Define las variables de conexión en la misma ventana de PowerShell desde la que inicias la API.
-Las variables no se transfieren automáticamente entre terminales distintas.
+Las variables no se transfieren automáticamente entre terminales distintas. Si Uvicorn ya está
+ejecutándose en otra terminal, pulsa `Ctrl+C` allí y vuelve a iniciarlo desde la ventana donde
+configuraste `MYSQL_PASSWORD`.
 
 ## 9. Ejecutar las pruebas automáticas de la API (opcional)
 

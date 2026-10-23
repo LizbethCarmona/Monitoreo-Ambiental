@@ -121,6 +121,10 @@ conector de MySQL, etc.).
 - **Dashboard web:** se sirve automáticamente junto con la API en
   `http://127.0.0.1:8000/dashboard/` (ver [src/dashboard/](src/dashboard)).
 
+> En la ejecución local con PowerShell, configura las variables `MYSQL_*` en la misma
+> terminal desde la que inicias Uvicorn. Las variables no se comparten automáticamente entre
+> terminales; el [manual de usuario](docs/manual_usuario.md) incluye los comandos completos.
+
 ## Estado del proyecto
 
 Ver [docs/cronograma/cronograma.xlsx](docs/cronograma/cronograma.xlsx) para el detalle

@@ -24,6 +24,11 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Abre `http://127.0.0.1:8000/dashboard/` en el navegador.
 
+Antes de iniciar Uvicorn, configura en esa misma terminal las variables `MYSQL_HOST`,
+`MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD` y `MYSQL_DATABASE` que correspondan a tu MySQL.
+PowerShell no las comparte automáticamente con otras terminales. Si Uvicorn ya está activo
+en una terminal sin esas variables, detenlo con `Ctrl+C` y reinícialo en la terminal configurada.
+
 El acceso local de desarrollo no requiere iniciar sesión por defecto. Para que varias personas
 entren desde equipos distintos por Internet, se debe desplegar FastAPI con cuentas individuales
 y HTTPS mediante Docker Compose y Caddy. Eso requiere un servidor público, un dominio y una

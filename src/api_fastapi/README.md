@@ -27,6 +27,11 @@ La base debe estar creada antes de iniciar el servicio, y la cuenta configurada 
 permisos `SELECT` e `INSERT` sobre ese esquema. Usa una cuenta administradora únicamente para
 crear el esquema y asignar esos permisos.
 
+En PowerShell, las variables `MYSQL_*` solo están disponibles en la terminal donde se definieron.
+Configúralas y ejecuta Uvicorn desde esa misma terminal; si Uvicorn ya se inició en otra, detenlo
+con `Ctrl+C` y vuelve a iniciarlo en la terminal configurada. Abrir otra terminal para el
+simulador no transfiere allí las variables ni cambia el entorno de la API.
+
 ## Cómo correrlo
 
 `app.main` contiene la aplicación FastAPI y sus rutas; `uvicorn` es el servidor ASGI que la
