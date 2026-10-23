@@ -66,7 +66,7 @@ Ver el detalle completo en [docs/arquitectura.md](docs/arquitectura.md).
 | Python, FastAPI y Uvicorn | FastAPI implementa la API; Uvicorn la ejecuta como servidor web local. La API consulta MySQL, recibe MQTT opcionalmente y sirve el dashboard. | Sí para mostrar el dashboard y consultar los datos. |
 | MySQL Server | Base de datos persistente: sensores, lecturas, umbrales y alertas. | Sí para el flujo completo; no lo ejecuta Docker Compose. |
 | MQTT y Mosquitto | MQTT es el protocolo de mensajería; Mosquitto es el broker que recibe y reenvía mensajes MQTT. | Solo para usar la ruta MQTT. |
-| Docker Desktop y Docker Compose | Docker ejecuta el contenedor de Mosquitto descrito en `src/api_fastapi/compose.yaml`. No contiene la API, MySQL ni el dashboard. | Solo para el broker local de la ruta MQTT. |
+| Docker Desktop y Docker Compose | Para la demo local, Compose puede iniciar solo Mosquitto. Para desplegar acceso multiusuario, también ejecuta FastAPI y Caddy con HTTPS; MySQL sigue siendo externo. | Opcional en ejecución local; necesario para el despliegue en servidor. |
 | HTML, CSS y JavaScript | Interfaz servida por FastAPI. Al abrirla, REST carga los datos iniciales; después, la conexión WebSocket persistente recibe de la API el estado y las alertas aproximadamente cada 2 s. REST también consulta el historial y sirve de respaldo si WebSocket se desconecta. | Sí para ver la interfaz; no requiere Node.js ni un paso de compilación. |
 
 Las dos rutas de entrada son alternativas: **simulador C++ → cola/hilos → MySQL** o
@@ -85,12 +85,17 @@ recibe las publicaciones MQTT ni guarda datos; eso corresponde al ingestor y a M
 
 En Windows, con MySQL en ejecución y el esquema `monitoreo_ambiental` creado, abre una
 terminal PowerShell en `src\api_fastapi`. Para la ruta MQTT, inicia Docker Desktop y el
-contenedor local de Mosquitto con `docker compose up -d mqtt`; Docker ejecuta solo ese broker,
-no MySQL, FastAPI ni el dashboard. Configura la cuenta MySQL de aplicación, habilita
+contenedor local de Mosquitto con `docker compose up -d mqtt`. Este comando inicia únicamente
+el broker; la API y el dashboard se ejecutan por separado en la demo local. Configura la cuenta MySQL de aplicación, habilita
 `MQTT_ENABLED=true` y arranca FastAPI. En otra terminal, publica lecturas sintéticas con
 `python -m app.simulador_mqtt --sensores 3 --intervalo 2`. Abre `/dashboard/`; verifica el
 estado en `/salud` y las lecturas guardadas en `/estado-clima`. Los comandos completos están
 en la [guía de ingesta MQTT y API](src/api_fastapi/README.md).
+
+Para compartir el dashboard por Internet desde distintos equipos, el proyecto también incluye
+un despliegue con cuentas individuales y HTTPS automático. Requiere un servidor y dominio
+públicos, que todavía deben contratarse/configurarse; los pasos están en la
+[guía de despliegue multiusuario](src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
 
 El núcleo C++ es una ruta de ingesta simulada independiente; sus requisitos y comandos están
 en [su guía](src/cpp_ingestion/README.md). Si usas únicamente la ruta C++, no necesitas iniciar

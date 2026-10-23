@@ -68,6 +68,27 @@ body {
   white-space: nowrap;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logout-button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #15203a;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 .dot {
   width: 8px;
   height: 8px;
@@ -541,6 +562,10 @@ body {
   .app-header {
     flex-direction: column;
     gap: 10px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
   }
   .live-badge {
     max-width: 100%;

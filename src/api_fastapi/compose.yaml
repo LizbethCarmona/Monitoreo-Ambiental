@@ -6,3 +6,55 @@ services:
     volumes:
       - ./mosquitto.docker.conf:/mosquitto/config/mosquitto.conf:ro
     restart: unless-stopped
+
+  api:
+    build:
+      context: ../..
+      dockerfile: src/api_fastapi/Dockerfile
+    environment:
+      APP_ENV: production
+      DASHBOARD_AUTH_ENABLED: "true"
+      DASHBOARD_SESSION_SECRET: ${DASHBOARD_SESSION_SECRET:?Set DASHBOARD_SESSION_SECRET in src/api_fastapi/.env}
+      DASHBOARD_USERS: ${DASHBOARD_USERS:?Set individual DASHBOARD_USERS in src/api_fastapi/.env}
+      DASHBOARD_COOKIE_SECURE: "true"
+      DASHBOARD_SESSION_MAX_AGE: ${DASHBOARD_SESSION_MAX_AGE:-28800}
+      ALLOWED_HOSTS: ${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in src/api_fastapi/.env}
+      MYSQL_HOST: ${MYSQL_HOST:?Set MYSQL_HOST in src/api_fastapi/.env}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in src/api_fastapi/.env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in src/api_fastapi/.env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-monitoreo_ambiental}
+      MQTT_ENABLED: ${MQTT_ENABLED:-false}
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+    expose:
+      - "8000"
+    depends_on:
+      - mqtt
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    environment:
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in src/api_fastapi/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

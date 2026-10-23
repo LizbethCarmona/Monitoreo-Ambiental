@@ -32,8 +32,10 @@ crear el esquema y asignar esos permisos.
 `app.main` contiene la aplicación FastAPI y sus rutas; `uvicorn` es el servidor ASGI que la
 ejecuta y publica localmente. FastAPI sirve también los archivos estáticos del dashboard:
 no hay un servidor Node.js separado. `mysql-connector-python` conecta la API a MySQL y
-`paho-mqtt` implementa el cliente MQTT opcional. Docker Compose solo inicia Mosquitto para
-la ruta MQTT; no ejecuta esta API ni MySQL. La ruta C++ escribe directamente en la misma base.
+`paho-mqtt` implementa el cliente MQTT opcional. Para la demo local, Docker Compose puede
+iniciar solo Mosquitto; el perfil completo de despliegue también ejecuta FastAPI y Caddy.
+MySQL no está incluido en Compose y debe ser accesible desde el servidor. La ruta C++ escribe
+directamente en la misma base.
 
 Instala el entorno una vez desde la raíz del repositorio:
 
@@ -145,3 +147,61 @@ umbrales instantáneos. El esquema conserva únicamente alertas puntuales; lími
 se muestran como métricas de referencia, no como eventos disparados. Valores por lectura de
 PM2.5 y temperatura del aire son aproximaciones/provisionales: no equivalen a una certificación
 regulatoria. La ubicación de la interfaz es fija hasta que los sensores aporten ubicación.
+
+## Despliegue multiusuario en Internet
+
+La API admite cuentas individuales, protege las rutas REST y WebSocket y usa sesiones con
+expiración. El Compose incluye Caddy para terminar HTTPS con certificados automáticos y no
+publica directamente el puerto de FastAPI. **Aún necesitas contratar/configurar un servidor y
+un dominio público:** sin ellos no existe una URL de Internet donde entrar.
+
+### Requisitos antes de desplegar
+
+- Un VPS/servidor Linux con Docker Engine y Docker Compose v2.
+- Un dominio cuyo registro DNS `A` (y `AAAA`, si se usa IPv6) apunte a la IP pública del servidor.
+- Puertos TCP 80 y 443 accesibles desde Internet para que Caddy obtenga y renueve el certificado.
+- Una instancia MySQL accesible desde el servidor. No expongas MySQL a todo Internet: limita el
+  firewall a la IP del servidor y usa una cuenta de aplicación con permisos mínimos.
+
+### Configurar y arrancar
+
+Clona el repositorio en el servidor y cambia a `src/api_fastapi`. Copia `.env.example` como
+`.env`, y configura el dominio y las credenciales reales en ese archivo. Genera el secreto de
+sesión con Python (no reutilices el ejemplo):
+
+```sh
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Genera una línea `usuario:hash` para cada persona con el programa interactivo. La contraseña se
+solicita sin mostrarse y no se guarda en el código ni en el repositorio:
+
+```sh
+python3 create_user_hash.py sebastian
+```
+
+Para más cuentas, ejecuta el comando una vez por persona y une las salidas en
+`DASHBOARD_USERS`, separándolas con punto y coma. En `.env`, usa valores reales para
+`DASHBOARD_DOMAIN`, `DASHBOARD_SESSION_SECRET`, `DASHBOARD_USERS`, `MYSQL_HOST`, `MYSQL_USER`,
+`MYSQL_PASSWORD` y `MYSQL_DATABASE`. Protege el archivo `.env` y no lo subas a GitHub. Si la
+contraseña de MySQL tiene caracteres especiales de Compose, guárdala entre comillas simples en
+`.env`; no incluyas comillas en la contraseña misma.
+
+Inicia el stack desde la carpeta `src/api_fastapi`:
+
+```sh
+docker compose up -d --build
+docker compose ps
+docker compose logs -f caddy api
+```
+
+Cuando Caddy indique que obtuvo el certificado, abre `https://DASHBOARD_DOMAIN/` e inicia
+sesión con una de las cuentas configuradas. Para detener los servicios ejecuta
+`docker compose down` (sin `-v`, para conservar certificados y configuración). El broker MQTT,
+si se habilita, queda enlazado solo a localhost; no cambies esa restricción sin configurar
+autenticación y TLS para el broker.
+
+El despliegue fija `DASHBOARD_COOKIE_SECURE=true` y permite solo el host de
+`DASHBOARD_DOMAIN`. El secreto de sesión debe ser aleatorio y tener al menos 32 bytes. Cambia
+las contraseñas de muestra de `.env.example` y verifica el firewall del servidor antes de
+anunciar la dirección a otros usuarios.

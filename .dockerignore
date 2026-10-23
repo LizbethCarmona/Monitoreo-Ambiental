@@ -1,0 +1,12 @@
+.git
+.venv
+venv
+build
+bin
+docs
+src/cpp_ingestion
+src/database
+**/__pycache__
+**/*.py[cod]
+**/.env
+**/*.log

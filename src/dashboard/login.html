@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="same-origin" />
+  <title>Iniciar sesión · Monitoreo ambiental</title>
+  <link rel="stylesheet" href="/dashboard/login.css" />
+</head>
+<body>
+  <main class="login-card">
+    <h1>Monitoreo ambiental</h1>
+    <p>Inicia sesión con la cuenta individual que te proporcionó el equipo.</p>
+    <form id="login-form">
+      <label for="usuario">Usuario</label>
+      <input id="usuario" name="usuario" autocomplete="username" required maxlength="40" />
+      <label for="contrasena">Contraseña</label>
+      <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required />
+      <button id="login-button" type="submit">Iniciar sesión</button>
+      <p id="login-error" class="error" role="alert" aria-live="polite"></p>
+    </form>
+  </main>
+  <script src="/dashboard/login.js" defer></script>
+</body>
+</html>
