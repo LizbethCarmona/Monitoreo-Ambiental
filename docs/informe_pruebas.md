@@ -40,21 +40,31 @@ valores se identifica como simulada o externa; el prototipo no consulta un servi
 - Limpieza de la instancia local (15-oct-2026): después de conservar la evidencia de carga,
   el usuario borró y confirmó con `COMMIT` 15,040 filas de `alertas` y 32,344 filas de
   `lecturas`; las consultas posteriores mostraron ambas tablas con cero filas. Se conserva
-  esta prueba como resultado histórico; las cifras de carga no describen el contenido actual
-  de la base local. La limpieza no eliminó tablas, sensores ni umbrales y no afecta el
-  funcionamiento del proyecto. Cuando se detienen los productores y la API, el historial del
-  dashboard permanece vacío hasta que se guarden lecturas nuevas.
+  esta limpieza como evidencia histórica; no describe el contenido actual de la base, que se
+  vuelve a poblar cuando se ejecuta un productor. La limpieza no eliminó tablas, sensores ni
+  umbrales.
 - Python: la suite pasa; el cliente de pruebas emite una advertencia de obsolescencia de
   `starlette.testclient` con `httpx` (sin fallos). La reejecución del 14-oct-2026 pasó 12
   pruebas y omitió la prueba del broker real porque no se configuró `MQTT_TEST_BROKER`; la
   ejecución previa con Mosquitto local tuvo las 13 pruebas aprobadas. Pylance no reporta
-  errores; quedan advertencias de variables/parámetros de callbacks no utilizados en
-  `ingestion.py`.
+  errores de sintaxis; el análisis del workspace puede mostrar imports sin resolver si no
+  reconoce las raíces `src/api_fastapi` y `src/database`. Se añadieron rutas de análisis en
+  `.vscode/settings.json`; puede ser necesario recargar la ventana de VS Code.
 - Verificación manual local (Windows, 13 de octubre de 2026): `/salud` respondió `ok` con
   MySQL conectado y MQTT habilitado/conectado. El simulador publicó lecturas MQTT para tres
   sensores; el usuario confirmó que el dashboard se actualizó y que `/estado-clima` devolvió
   lecturas. Esto verifica el recorrido funcional local
   simulador → broker MQTT → API → MySQL → dashboard usando datos sintéticos.
+- Verificación multiusuario privada: se ejecutó el stack de Compose con autenticación de
+  producción, cookies `Secure` y MySQL persistente; Tailscale Serve entregó HTTPS solo al
+  tailnet autorizado. Se confirmó la ruta de login con HTTP 200, una ruta de datos anónima con
+  HTTP 401 y dos sesiones independientes, donde cerrar sesión en una no invalidó la otra.
+  La URL configurada en esta computadora es
+  `https://desktop-994eo6e.tail6cf848.ts.net/dashboard/`; requiere Tailscale conectado y el
+  anfitrión encendido. No es un despliegue público y no se validó acceso desde Internet.
+- En la ejecución de cierre del 6-nov-2026, las 24 pruebas de API pasaron al configurar
+  `MQTT_TEST_BROKER=127.0.0.1` y usar el Mosquitto local; también pasó 1 prueba de configuración
+  de base de datos. Sin esa variable, la prueba del broker se omite.
 - La carga ejercita escritura concurrente de lecturas y alertas, rechazo de duplicados e
   integridad referencial en la base local. Es una prueba funcional de carga, no una medición
   de capacidad máxima, disponibilidad sostenida ni rendimiento de hardware de producción.
@@ -91,8 +101,8 @@ valores se identifica como simulada o externa; el prototipo no consulta un servi
   producción.
 - La integración de sensores físicos y su calibración están fuera del alcance del proyecto.
   Las pruebas validan el flujo con datos sintéticos; no evalúan la exactitud de instrumentos.
-- La instancia local de demostración quedó actualmente sin lecturas ni alertas después de la
-  limpieza confirmada; para revisar el dashboard vacío, mantener detenidos el simulador MQTT
-  y el productor C++.
+- El 6-nov-2026 una consulta de solo lectura mientras el simulador estaba activo encontró
+  9,834 lecturas, 5,337 alertas y 3 sensores. Es una observación puntual: los conteos cambian
+  conforme se generan datos sintéticos.
 - La presentación calendarizada solo puede marcarse realizada en su fecha. El guion y los
   comandos reproducibles quedan preparados por el equipo.

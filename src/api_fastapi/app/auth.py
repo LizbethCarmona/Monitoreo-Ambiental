@@ -122,7 +122,7 @@ def validar_configuracion() -> None:
         if not cookie_secure():
             raise RuntimeError("DASHBOARD_COOKIE_SECURE=true es obligatorio en producción.")
         if not os.getenv("ALLOWED_HOSTS", "").strip():
-            raise RuntimeError("Configura ALLOWED_HOSTS con el dominio público permitido.")
+            raise RuntimeError("Configura ALLOWED_HOSTS con el host permitido para la aplicación.")
 
 
 class LimitadorAccesos:

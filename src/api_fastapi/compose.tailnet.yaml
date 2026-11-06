@@ -1,0 +1,6 @@
+services:
+  api:
+    environment:
+      APP_ENV: production
+      DASHBOARD_COOKIE_SECURE: "true"
+      ALLOWED_HOSTS: ${TAILNET_HOSTNAME:?Set TAILNET_HOSTNAME in demo.env},localhost,127.0.0.1

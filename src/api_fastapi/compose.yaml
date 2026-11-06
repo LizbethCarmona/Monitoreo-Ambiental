@@ -7,6 +7,25 @@ services:
       - ./mosquitto.docker.conf:/mosquitto/config/mosquitto.conf:ro
     restart: unless-stopped
 
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in src/api_fastapi/.env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-monitoreo_ambiental}
+      APP_DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in src/api_fastapi/.env}
+    command: ["--default-time-zone=+00:00"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../../src/database/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ./mysql-init/20-create-app-user.sh:/docker-entrypoint-initdb.d/20-create-app-user.sh:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
   api:
     build:
       context: ../..
@@ -19,9 +38,9 @@ services:
       DASHBOARD_COOKIE_SECURE: "true"
       DASHBOARD_SESSION_MAX_AGE: ${DASHBOARD_SESSION_MAX_AGE:-28800}
       ALLOWED_HOSTS: ${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN in src/api_fastapi/.env}
-      MYSQL_HOST: ${MYSQL_HOST:?Set MYSQL_HOST in src/api_fastapi/.env}
-      MYSQL_PORT: ${MYSQL_PORT:-3306}
-      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in src/api_fastapi/.env}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: monitoreo_app
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in src/api_fastapi/.env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-monitoreo_ambiental}
       MQTT_ENABLED: ${MQTT_ENABLED:-false}
@@ -30,13 +49,32 @@ services:
     expose:
       - "8000"
     depends_on:
-      - mqtt
+      mqtt:
+        condition: service_started
+      mysql:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      test: ["CMD", "python", "-c", "from os import environ; from urllib.request import Request, urlopen; urlopen(Request('http://127.0.0.1:8000/healthz', headers={'Host': environ['ALLOWED_HOSTS'].split(',')[0]}), timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  simulador:
+    profiles: ["demo"]
+    build:
+      context: ../..
+      dockerfile: src/api_fastapi/Dockerfile
+    environment:
+      MQTT_HOST: mqtt
+      MQTT_PORT: "1883"
+    command:
+      - sh
+      - -c
+      - until python -c "import socket; socket.create_connection(('mqtt', 1883), timeout=2).close()"; do sleep 2; done; exec python -m app.simulador_mqtt --sensores 3 --intervalo 2
+    depends_on:
+      - mqtt
+    restart: unless-stopped
 
   caddy:
     image: caddy:2
@@ -56,5 +94,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  mysql_data:
   caddy_data:
   caddy_config:

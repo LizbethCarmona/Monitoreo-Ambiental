@@ -17,9 +17,14 @@ de agregados con detección de umbrales de contaminación.
 
 ## Documentación
 
-- **¿Primera vez con el proyecto?** Empieza por el
+- **¿Solo quieres ejecutar la demo?** Sigue la
+  [guía fácil de ejecución en Windows](docs/Guia_facil_ejecucion_Monitoreo_Ambiental.docx):
+  prepara Docker Compose, crea tu cuenta y abre el dashboard.
+- **¿Necesitas la explicación detallada?** Consulta el
   [manual de usuario desde cero](docs/manual_usuario.md): instalación de Python y MySQL sin
   Workbench, preparación de la base de datos, ejecución de la demo y solución de problemas.
+- [Documentación técnica](docs/documentacion_tecnica.docx): arquitectura, operación,
+  autenticación multiusuario y estado verificado del acceso privado por Tailscale.
 - [Documento de Justificación del Proyecto](docs/justificacion/Documento_Justificacion_Equipo_PC.pdf)
 - [Reporte Técnico de Métricas JSON](docs/reportes/Reporte_Tecnico_Metricas_JSON.pdf) y su
   esquema vivo en [docs/metricas_schema.json](docs/metricas_schema.json)
@@ -64,9 +69,9 @@ Ver el detalle completo en [docs/arquitectura.md](docs/arquitectura.md).
 |---|---|---|
 | C++17, `std::thread`, mutex y cola concurrente | Simular productores y procesar lecturas en paralelo; guardar resultados en MySQL. | No para la demo MQTT; es una ruta de ingesta alternativa. |
 | Python, FastAPI y Uvicorn | FastAPI implementa la API; Uvicorn la ejecuta como servidor web local. La API consulta MySQL, recibe MQTT opcionalmente y sirve el dashboard. | Sí para mostrar el dashboard y consultar los datos. |
-| MySQL Server | Base de datos persistente: sensores, lecturas, umbrales y alertas. | Sí para el flujo completo; no lo ejecuta Docker Compose. |
+| MySQL Server | Base de datos persistente: sensores, lecturas, umbrales y alertas. En desarrollo local se instala por separado; en el despliegue multiusuario lo ejecuta Compose con un volumen persistente. | Sí para el flujo completo. |
 | MQTT y Mosquitto | MQTT es el protocolo de mensajería; Mosquitto es el broker que recibe y reenvía mensajes MQTT. | Solo para usar la ruta MQTT. |
-| Docker Desktop y Docker Compose | Para la demo local, Compose puede iniciar solo Mosquitto. Para desplegar acceso multiusuario, también ejecuta FastAPI y Caddy con HTTPS; MySQL sigue siendo externo. | Opcional en ejecución local; necesario para el despliegue en servidor. |
+| Docker Desktop y Docker Compose | Ejecuta el stack multiusuario actual (FastAPI, MySQL persistente, Mosquitto y simulador). Caddy queda como alternativa para un futuro despliegue público. | Necesario para la configuración compartida actual. |
 | HTML, CSS y JavaScript | Interfaz servida por FastAPI. Al abrirla, REST carga los datos iniciales; después, la conexión WebSocket persistente recibe de la API el estado y las alertas aproximadamente cada 2 s. REST también consulta el historial y sirve de respaldo si WebSocket se desconecta. | Sí para ver la interfaz; no requiere Node.js ni un paso de compilación. |
 
 Las dos rutas de entrada son alternativas: **simulador C++ → cola/hilos → MySQL** o
@@ -92,10 +97,12 @@ el broker; la API y el dashboard se ejecutan por separado en la demo local. Conf
 estado en `/salud` y las lecturas guardadas en `/estado-clima`. Los comandos completos están
 en la [guía de ingesta MQTT y API](src/api_fastapi/README.md).
 
-Para compartir el dashboard por Internet desde distintos equipos, el proyecto también incluye
-un despliegue con cuentas individuales y HTTPS automático. Requiere un servidor y dominio
-públicos, que todavía deben contratarse/configurarse; los pasos están en la
-[guía de despliegue multiusuario](src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
+El acceso multiusuario ya está activo de forma **privada** mediante Tailscale Serve: los
+integrantes autorizados en el tailnet pueden abrir
+`https://desktop-994eo6e.tail6cf848.ts.net/dashboard/` e iniciar sesión con su propia cuenta
+de la aplicación. La computadora anfitriona debe permanecer encendida y conectada. No es un
+sitio público; el despliegue público con Caddy/VM/DNS es una alternativa separada que todavía
+no está configurada. Consulta la [guía operativa de Tailscale](src/api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
 
 El núcleo C++ es una ruta de ingesta simulada independiente; sus requisitos y comandos están
 en [su guía](src/cpp_ingestion/README.md). Si usas únicamente la ruta C++, no necesitas iniciar
@@ -138,9 +145,10 @@ de 2026; la interpretación y alcance de los umbrales están documentados en el
 [informe de pruebas](docs/informe_pruebas.md). La entrega presencial sigue su fecha académica programada: el proyecto
 prepara su guion de demostración, pero no puede marcar como celebrada una sesión futura.
 
-La instancia MySQL local usada para la demostración quedó con cero lecturas y alertas tras la
-limpieza confirmada el 15 de octubre de 2026; las cifras de carga anteriores se conservan como
-evidencia histórica. El dashboard seguirá vacío mientras no se ejecuten los simuladores.
+Los simuladores generan lecturas continuamente y el contenido de MySQL cambia durante la
+ejecución; las cifras de cargas anteriores son evidencia histórica, no describen el estado
+actual de la base. Si el dashboard aparece vacío, verifica que esté activo algún productor y
+que la API esté conectada a la instancia MySQL correcta.
 
 Documentos de cierre: [manual de usuario](docs/manual_usuario.md), [guion de demo](docs/guion_demo.md),
 y [informe de pruebas](docs/informe_pruebas.md).
