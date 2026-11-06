@@ -1,0 +1,6 @@
+{
+  "python.analysis.extraPaths": [
+    "src/api_fastapi",
+    "src/database"
+  ]
+}

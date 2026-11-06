@@ -55,6 +55,12 @@ class PruebasAutenticacion(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "DASHBOARD_COOKIE_SECURE"):
                 auth.validar_configuracion()
 
+        configuracion["DASHBOARD_COOKIE_SECURE"] = "true"
+        configuracion["ALLOWED_HOSTS"] = ""
+        with patch.dict(os.environ, configuracion, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "host permitido"):
+                auth.validar_configuracion()
+
         configuracion["DASHBOARD_AUTH_ENABLED"] = "false"
         with patch.dict(os.environ, configuracion, clear=False):
             with self.assertRaisesRegex(RuntimeError, "DASHBOARD_AUTH_ENABLED"):
@@ -99,6 +105,38 @@ class PruebasAutenticacion(unittest.TestCase):
         self.assertEqual(salud.status_code, 200)
         self.assertEqual(logout.status_code, 204)
         self.assertEqual(sin_sesion.status_code, 401)
+
+    def test_cuentas_individuales_tienen_sesiones_independientes(self):
+        contrasena_ana = "OtraClaveSegura456!"
+        hash_ana = crear_hash_contrasena(contrasena_ana)
+        configuracion = self.configuracion()
+        configuracion["DASHBOARD_USERS"] = (
+            f"sebas:{self.hash_valido};ana:{hash_ana}"
+        )
+        with (
+            patch.dict(os.environ, configuracion, clear=False),
+            patch("app.main._login_limitador", auth.LimitadorAccesos()),
+            patch("app.main.db.conectar", return_value=Mock()),
+            TestClient(app) as cliente_sebas,
+            TestClient(app) as cliente_ana,
+        ):
+            login_sebas = cliente_sebas.post(
+                "/auth/login",
+                json={"usuario": "sebas", "contrasena": "UnaClaveDePruebaSegura123!"},
+            )
+            login_ana = cliente_ana.post(
+                "/auth/login",
+                json={"usuario": "ana", "contrasena": contrasena_ana},
+            )
+            logout_sebas = cliente_sebas.post("/auth/logout")
+            acceso_sebas = cliente_sebas.get("/salud")
+            acceso_ana = cliente_ana.get("/salud")
+
+        self.assertEqual(login_sebas.status_code, 200)
+        self.assertEqual(login_ana.status_code, 200)
+        self.assertEqual(logout_sebas.status_code, 204)
+        self.assertEqual(acceso_sebas.status_code, 401)
+        self.assertEqual(acceso_ana.status_code, 200)
 
     def test_websocket_requiere_sesion_autenticada(self):
         with patch.dict(os.environ, self.configuracion(), clear=False), TestClient(app) as cliente:

@@ -6,11 +6,11 @@
    una cuenta de aplicación; configura `MYSQL_*` en la terminal PowerShell desde la que se
    iniciará Uvicorn. Las variables no se transfieren entre terminales; si Uvicorn ya estaba
    activo en otra, detenlo con `Ctrl+C` y vuelve a iniciarlo en la terminal configurada.
-2. Para la demostración MQTT, inicia Docker Desktop y el contenedor del broker Mosquitto desde
-   `src/api_fastapi` (`docker compose up -d mqtt`). Este contenedor solo recibe/publica mensajes
-   MQTT en esta demo local; la API y el dashboard se inician por separado y MySQL es externo.
-   Para el despliegue público multiusuario, el Compose también inicia FastAPI y Caddy con HTTPS;
-   sigue la [guía de despliegue](../src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
+2. Para la demostración local MQTT, inicia Docker Desktop y el broker Mosquitto (`docker compose
+   up -d mqtt` desde `src/api_fastapi`). En el despliegue multiusuario que se demuestra al equipo,
+   Compose inicia FastAPI, MySQL persistente, Mosquitto y el simulador; Tailscale Serve publica
+   HTTPS solo al tailnet autorizado. Consulta la
+   [guía de acceso privado](../src/api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
    La ruta C++ directa a MySQL no requiere Docker.
 3. Enciende FastAPI con `MQTT_ENABLED=true`; revisa `/salud` y comprueba MySQL y MQTT.
 4. Abre `/dashboard/`; comprueba `En vivo · WebSocket` y observa las actualizaciones. Explica
@@ -35,6 +35,14 @@ MQTT, que el simulador publicara lecturas MQTT para tres sensores y que las lect
 consultarse en `/estado-clima` y verse en el dashboard por WebSocket. Es una comprobación
 funcional manual con datos sintéticos; no sustituye la prueba de carga concurrente SQL ni
 demuestra mediciones de sensores físicos.
+
+## Demostración multiusuario
+
+Abre el dashboard desde dos dispositivos autorizados en el tailnet e inicia sesión con dos
+cuentas distintas. Muestra que ambos reciben el estado compartido por WebSocket y que cerrar
+sesión en uno no invalida la sesión del otro. Una petición anónima a las rutas de datos debe
+responder `401`. Aclara que Tailscale limita quién puede llegar al servicio y que la aplicación
+mantiene la autenticación individual; no se trata de una URL pública.
 
 ## Explicación de un minuto
 

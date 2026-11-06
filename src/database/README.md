@@ -29,11 +29,13 @@ MySQL Server es el almacén persistente compartido por los productores C++ y la 
 La integridad se protege con claves y transacciones. La API calcula los promedios horarios y
 móviles al consultar; no guarda esos promedios como lecturas ni como alertas.
 
-MySQL es un servicio aparte: el `docker compose` de `src/api_fastapi` no crea, aloja ni limpia
-la base de datos. En la demo local puede ejecutarse solo el broker Mosquitto; en el despliegue
-público también inicia FastAPI y Caddy con HTTPS. Al detener Docker Compose, MySQL conserva sus
-registros; para eliminar lecturas y alertas sigue el procedimiento de limpieza de más abajo.
-Consulta la [guía de despliegue multiusuario](../api_fastapi/README.md#despliegue-multiusuario-en-internet).
+En la ejecución local, MySQL puede instalarse y administrarse por separado;
+`docker compose up -d mqtt` solo inicia el broker Mosquitto. El despliegue multiusuario actual
+usa Compose para ejecutar MySQL privado en un volumen persistente y FastAPI; Tailscale Serve
+proporciona HTTPS solo a dispositivos autorizados. Al ejecutar `docker compose down` el volumen
+conserva sus registros; no uses `down -v` salvo que quieras borrar de forma permanente la base
+de esa instalación. Consulta la
+[guía de acceso privado](../api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
 
 Al visualizar estos datos, FastAPI consulta MySQL y envía el estado y las alertas al navegador
 por la conexión WebSocket del dashboard, aproximadamente cada 2 s. WebSocket es transporte

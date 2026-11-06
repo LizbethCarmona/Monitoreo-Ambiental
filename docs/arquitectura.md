@@ -57,11 +57,13 @@ dos segundos y difunde el snapshot compartido a todos ellos. El cliente envía `
 transporta las publicaciones MQTT ni escribe en MySQL. REST carga el estado inicial y el
 historial, y sirve como respaldo temporal mientras el cliente reconecta WebSocket.
 
-Para la demostración local MQTT, Docker Compose puede ejecutar únicamente Mosquitto como broker
-local en el puerto 1883; MySQL, FastAPI y el dashboard se inician por separado. Para compartir
-el dashboard desde Internet, el mismo Compose también define FastAPI y Caddy con HTTPS y login
-individual; MySQL permanece externo. Consulta la
-[guía de despliegue multiusuario](../src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
+El despliegue multiusuario actualmente operativo ejecuta FastAPI, MySQL 8.4 con volumen
+persistente, Mosquitto y el simulador mediante Docker Compose. Tailscale Serve termina HTTPS y
+permite llegar a la aplicación únicamente desde dispositivos autorizados en el tailnet; no es
+un servicio abierto a Internet. La API y MySQL no publican puertos en interfaces externas.
+La opción separada con Caddy permite preparar un futuro acceso público, pero requiere VM,
+DNS y reglas de red que no forman parte del despliegue actual. Consulta la
+[guía operativa de Tailscale](../src/api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
 La ruta C++ escribe directamente en MySQL y puede utilizarse sin iniciar Docker ni Mosquitto.
 
 ## Tecnologías y responsabilidades
@@ -71,9 +73,9 @@ La ruta C++ escribe directamente en MySQL y puede utilizarse sin iniciar Docker 
 | C++17 (`src/cpp_ingestion`) | Productores simulados, `std::thread`, cola bloqueante, pool de consumidores y escritura transaccional a MySQL mediante el conector C de MariaDB compatible con MySQL. | No se conecta al broker MQTT ni pasa por FastAPI para guardar la lectura. |
 | Python + FastAPI (`src/api_fastapi/app`) | Implementa rutas REST, ingesta MQTT opcional, consultas y WebSocket. | FastAPI no es el servidor de procesos: Uvicorn inicia y mantiene la aplicación HTTP. |
 | Uvicorn | Servidor ASGI que ejecuta FastAPI; localmente escucha en `127.0.0.1:8000` y en el contenedor de despliegue en la red interna. | No almacena datos ni crea MySQL. |
-| MySQL 8 / InnoDB | Servidor y motor relacional que persisten sensores, lecturas, umbrales y alertas. | No lo inicia el Compose de Mosquitto; debe estar instalado/ejecutándose aparte. |
+| MySQL 8 / InnoDB | Servidor y motor relacional que persisten sensores, lecturas, umbrales y alertas. | En el desarrollo local puede ejecutarse por separado; en el despliegue multiusuario actual Compose lo ejecuta en una red privada y persiste sus datos en volumen. |
 | MQTT / Mosquitto | MQTT es el protocolo publish/subscribe. Mosquitto es el broker que recibe publicaciones del simulador o dispositivo y las entrega al suscriptor MQTT de la API. | El broker transporta mensajes; no es la base de datos ni evalúa los umbrales del sistema. |
-| Docker / Compose | En la demo local ejecuta Mosquitto, con el puerto 1883 enlazado a localhost. En el despliegue público ejecuta también FastAPI y Caddy, que termina HTTPS y sirve el acceso autenticado. | No aloja MySQL; esa instancia debe configurarse por separado. |
+| Docker / Compose | Ejecuta los servicios de la aplicación y MySQL persistente. El perfil local limita la API y MQTT a localhost; el perfil multiusuario usa cookies seguras y host permitido para Tailscale. | El despliegue actual no expone MySQL ni la API a Internet. Caddy es opcional para un futuro servicio público. |
 | HTML / CSS / JavaScript | Dashboard sin framework ni build: FastAPI sirve los archivos; REST carga estado/historial y WebSocket actualiza estado y alertas. | No necesita Node.js ni es un servicio separado. |
 
 **Rutas de datos:** C++ → cola concurrente → consumidores → MySQL; o publicador MQTT →

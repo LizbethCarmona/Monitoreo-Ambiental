@@ -4,13 +4,28 @@ Esta guía está pensada para una persona que recibe el proyecto por primera vez
 instalar, cómo preparar la base de datos sin MySQL Workbench, cómo iniciar la demostración y
 qué hacer si algo no funciona. Los comandos son para **Windows 10/11 y PowerShell**.
 
+Si solo necesitas los pasos esenciales para levantar la demostración local, empieza por la
+[guía fácil de ejecución](Guia_facil_ejecucion_Monitoreo_Ambiental.docx). Este manual amplía
+el contexto, los procedimientos de mantenimiento y el diagnóstico.
+
 > **Alcance:** el proyecto de clase se demuestra con datos sintéticos generados por simuladores.
-> No requiere ni contempla instalar sensores físicos. El broker MQTT de desarrollo permite
-> conexiones anónimas únicamente en el equipo local; no lo expongas a Internet ni a una red.
-> Docker Compose también contiene un despliegue separado para FastAPI y Caddy con login y HTTPS;
-> MySQL sigue siendo externo. Si quieres compartir el dashboard desde varios equipos por
-> Internet, consulta la [guía de despliegue multiusuario](../src/api_fastapi/README.md#despliegue-multiusuario-en-internet).
-> Si vas a usar únicamente el productor C++, no necesitas Docker.
+> No requiere ni contempla instalar sensores físicos. El broker MQTT permite conexiones
+> anónimas solo dentro del equipo/stack; no lo expongas directamente a Internet ni a una red.
+> La ejecución multiusuario actual usa cuentas individuales, MySQL persistente y acceso HTTPS
+> privado por Tailscale. No es un sitio público. Si vas a usar únicamente el productor C++,
+> no necesitas Docker.
+
+## Acceso multiusuario actual
+
+El dashboard compartido está disponible en
+[`https://desktop-994eo6e.tail6cf848.ts.net/dashboard/`](https://desktop-994eo6e.tail6cf848.ts.net/dashboard/),
+solo para integrantes autorizados en el tailnet de Tailscale. Cada integrante debe instalar
+[Tailscale](https://tailscale.com/download/windows), iniciar sesión en el tailnet al que fue
+invitado y después iniciar sesión en la aplicación con su propia cuenta. No compartas
+contraseñas ni uses una cuenta común. La computadora anfitriona, Docker Desktop y Tailscale
+deben estar encendidos y conectados para que el servicio esté disponible. La configuración
+técnica y el procedimiento para agregar integrantes están en la
+[guía de Tailscale](../src/api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
 
 ## 1. ¿Qué voy a ejecutar?
 
@@ -30,10 +45,10 @@ compilarlo para ejecutar la demo MQTT descrita en las secciones principales.
 ### En palabras sencillas: qué es cada componente
 
 - **Docker Desktop** es el programa que permite ejecutar contenedores en Windows; **Docker
-  Compose** lee `src/api_fastapi/compose.yaml`. Para la demo local se usa `docker compose up -d
-  mqtt` y arranca solo **Mosquitto**, el broker que recibe y reenvía mensajes MQTT. Para el
-  despliegue público, el mismo Compose puede ejecutar FastAPI y Caddy con HTTPS; MySQL siempre
-  es externo y la ruta C++ directa a MySQL no requiere Docker.
+  Compose** lee `src/api_fastapi/compose.yaml`. En modo local puede iniciar solo **Mosquitto**.
+  En la configuración multiusuario activa ejecuta FastAPI, MySQL persistente, el broker y el
+  simulador; Tailscale Serve proporciona el acceso HTTPS privado. Caddy queda reservado para
+  una publicación pública futura. La ruta C++ directa a MySQL no requiere Docker.
 - **MQTT** es el protocolo de mensajes entre el simulador/publicador y el suscriptor de la API.
   **FastAPI** es el código de la API; **Uvicorn** es el servidor que lo ejecuta y sirve el
   dashboard en el navegador.
@@ -310,9 +325,10 @@ El recorrido para explicarlo es:
    docker compose down
    ```
 
-No uses `docker compose down -v`: esa opción elimina volúmenes de datos asociados si en el
-futuro se agregan al Compose. Detener la aplicación no borra las lecturas; estas permanecen
-guardadas en MySQL.
+No uses `docker compose down -v` para detener el stack multiusuario: esa opción elimina el
+volumen persistente de MySQL y borra sus datos. `docker compose down` detiene los servicios
+sin borrar las lecturas. Si ejecutaste únicamente el broker local, las lecturas están en la
+instancia MySQL local configurada para la API.
 
 ### Dejar vacío el historial del dashboard (opcional)
 

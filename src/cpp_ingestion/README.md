@@ -44,9 +44,10 @@ La entrada MQTT está implementada como una segunda ruta ejecutable en la API
 (`IngestorMQTT`); consulta la guía [API/MQTT](../api_fastapi/README.md). `SensorHiloProductor`
 sigue siendo el simulador concurrente C++; no hace falta reemplazarlo para demostrar MQTT.
 La ruta C++ escribe directamente en MySQL y no requiere Docker ni Mosquitto. Para la demo local,
-Docker Compose puede ejecutar el broker MQTT; para el despliegue público del dashboard, Compose
-también define FastAPI y Caddy con HTTPS. Consulta la
-[guía de despliegue multiusuario](../api_fastapi/README.md#despliegue-multiusuario-en-internet).
+Docker Compose puede ejecutar el broker MQTT. El dashboard multiusuario actual usa FastAPI y
+MySQL en Compose, con acceso HTTPS privado por Tailscale; una configuración separada con Caddy
+para acceso público aún requeriría VM, DNS y reglas de red. Consulta la
+[guía de acceso privado](../api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
 
 ## Compilar y correr
 

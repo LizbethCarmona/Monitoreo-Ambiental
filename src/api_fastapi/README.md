@@ -38,9 +38,10 @@ simulador no transfiere allí las variables ni cambia el entorno de la API.
 ejecuta y publica localmente. FastAPI sirve también los archivos estáticos del dashboard:
 no hay un servidor Node.js separado. `mysql-connector-python` conecta la API a MySQL y
 `paho-mqtt` implementa el cliente MQTT opcional. Para la demo local, Docker Compose puede
-iniciar solo Mosquitto; el perfil completo de despliegue también ejecuta FastAPI y Caddy.
-MySQL no está incluido en Compose y debe ser accesible desde el servidor. La ruta C++ escribe
-directamente en la misma base.
+iniciar solo Mosquitto. El despliegue multiusuario actual ejecuta FastAPI, MySQL 8.4 y Mosquitto
+en Compose; MySQL permanece en la red privada y usa un volumen persistente. Tailscale Serve
+proporciona HTTPS privado. Caddy es una alternativa no desplegada para acceso público. La ruta
+C++ local escribe directamente en la base configurada para su entorno.
 
 Instala el entorno una vez desde la raíz del repositorio:
 
@@ -79,6 +80,76 @@ prueba directamente:
 - `http://127.0.0.1:8000/dashboard/` — dashboard web (ver [src/dashboard/](../dashboard)),
   que recibe actualizaciones por WebSocket; usa REST para la carga inicial, el historial y
   consultas temporales si WebSocket se desconecta y está reconectando.
+
+### Ejecutar localmente la demo multiusuario completa
+
+Este perfil inicia MySQL en un volumen persistente, la API protegida por login y un simulador
+MQTT con datos sintéticos. Publica la interfaz solo en `127.0.0.1`; no la hace accesible desde otros equipos. El acceso
+privado entre dispositivos se habilita mediante la sección de Tailscale a continuación;
+Caddy se reserva para una futura publicación pública.
+
+Guarda una copia de `.env.example` fuera de la carpeta sincronizada del proyecto:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Monitoreo-Ambiental"
+Copy-Item src\api_fastapi\.env.example "$env:LOCALAPPDATA\Monitoreo-Ambiental\demo.env"
+```
+
+En `demo.env`, establece `DASHBOARD_DOMAIN=localhost`, genera secretos distintos para
+`DASHBOARD_SESSION_SECRET`, `MYSQL_ROOT_PASSWORD` y `MYSQL_PASSWORD`, y reemplaza
+`DASHBOARD_USERS` con las cuentas personales que vayas a utilizar. Para cada cuenta, genera una
+línea `usuario:hash` de manera interactiva, sin guardar la contraseña en el historial:
+
+```powershell
+Set-Location src\api_fastapi
+py create_user_hash.py sebas
+```
+
+Pega la salida en `DASHBOARD_USERS`; agrega más cuentas separando sus líneas con `;`. No
+compartas una misma cuenta entre integrantes. Desde la raíz del repositorio, inicia los servicios:
+
+```powershell
+docker compose -f src\api_fastapi\compose.yaml -f src\api_fastapi\compose.local.yaml `
+  --env-file "$env:LOCALAPPDATA\Monitoreo-Ambiental\demo.env" --profile demo up -d --build
+```
+
+Abre `http://localhost:8000/dashboard/`. Para inspeccionar o detener los servicios, utiliza los
+mismos argumentos de Compose y ejecuta `ps`, `logs -f api mysql simulador` o `down`. `down`
+conserva los datos de MySQL; evita `down -v` salvo que quieras borrarlos.
+
+### Compartir de forma privada con Tailscale
+
+Tailscale Serve publica el dashboard solo a los dispositivos autorizados en tu tailnet y ofrece
+HTTPS. No uses Funnel: Funnel haría el servicio público para cualquier persona. Esta opción no
+requiere una VM ni un dominio comprado, pero todos los equipos deben instalar Tailscale, iniciar
+sesión en el tailnet autorizado y tu computadora debe permanecer encendida, en línea y con Docker.
+
+En el despliegue actual el endpoint de esta computadora es
+`https://desktop-994eo6e.tail6cf848.ts.net/dashboard/`. El nombre es específico de este equipo;
+para otra máquina, establece `TAILNET_HOSTNAME` en el archivo privado `demo.env` con su nombre
+MagicDNS completo. Después de habilitar HTTPS en la consola Tailscale, desde la raíz aplica la
+configuración de Compose:
+
+```powershell
+docker compose -f src\api_fastapi\compose.yaml -f src\api_fastapi\compose.local.yaml `
+  -f src\api_fastapi\compose.tailnet.yaml `
+  --env-file "$env:LOCALAPPDATA\Monitoreo-Ambiental\demo.env" --profile demo up -d api simulador
+```
+
+Inicia Serve en PowerShell:
+
+```powershell
+& "C:\Program Files\Tailscale\tailscale.exe" serve --bg 8000
+```
+
+Comparte la URL indicada por Tailscale solo con integrantes autorizados en tu tailnet. En la
+consola de Tailscale, invita a cada integrante con su correo desde
+[Users](https://login.tailscale.com/admin/users); cada persona instala Tailscale en su equipo y
+se conecta con su propia cuenta. Luego cada una inicia sesión también en la aplicación con su
+usuario individual. El plan Personal de Tailscale incluye hasta seis usuarios según su
+[página de precios](https://tailscale.com/pricing). Para cerrar el acceso remoto, ejecuta
+`tailscale serve reset`; la demo seguirá disponible en `http://localhost:8000/dashboard/` en
+esta computadora.
 
 ## Ingesta por MQTT
 
@@ -153,60 +224,14 @@ se muestran como métricas de referencia, no como eventos disparados. Valores po
 PM2.5 y temperatura del aire son aproximaciones/provisionales: no equivalen a una certificación
 regulatoria. La ubicación de la interfaz es fija hasta que los sensores aporten ubicación.
 
-## Despliegue multiusuario en Internet
+## Alternativa futura: despliegue multiusuario en Internet
 
-La API admite cuentas individuales, protege las rutas REST y WebSocket y usa sesiones con
-expiración. El Compose incluye Caddy para terminar HTTPS con certificados automáticos y no
-publica directamente el puerto de FastAPI. **Aún necesitas contratar/configurar un servidor y
-un dominio público:** sin ellos no existe una URL de Internet donde entrar.
-
-### Requisitos antes de desplegar
-
-- Un VPS/servidor Linux con Docker Engine y Docker Compose v2.
-- Un dominio cuyo registro DNS `A` (y `AAAA`, si se usa IPv6) apunte a la IP pública del servidor.
-- Puertos TCP 80 y 443 accesibles desde Internet para que Caddy obtenga y renueve el certificado.
-- Una instancia MySQL accesible desde el servidor. No expongas MySQL a todo Internet: limita el
-  firewall a la IP del servidor y usa una cuenta de aplicación con permisos mínimos.
-
-### Configurar y arrancar
-
-Clona el repositorio en el servidor y cambia a `src/api_fastapi`. Copia `.env.example` como
-`.env`, y configura el dominio y las credenciales reales en ese archivo. Genera el secreto de
-sesión con Python (no reutilices el ejemplo):
-
-```sh
-python3 -c "import secrets; print(secrets.token_urlsafe(48))"
-```
-
-Genera una línea `usuario:hash` para cada persona con el programa interactivo. La contraseña se
-solicita sin mostrarse y no se guarda en el código ni en el repositorio:
-
-```sh
-python3 create_user_hash.py sebastian
-```
-
-Para más cuentas, ejecuta el comando una vez por persona y une las salidas en
-`DASHBOARD_USERS`, separándolas con punto y coma. En `.env`, usa valores reales para
-`DASHBOARD_DOMAIN`, `DASHBOARD_SESSION_SECRET`, `DASHBOARD_USERS`, `MYSQL_HOST`, `MYSQL_USER`,
-`MYSQL_PASSWORD` y `MYSQL_DATABASE`. Protege el archivo `.env` y no lo subas a GitHub. Si la
-contraseña de MySQL tiene caracteres especiales de Compose, guárdala entre comillas simples en
-`.env`; no incluyas comillas en la contraseña misma.
-
-Inicia el stack desde la carpeta `src/api_fastapi`:
-
-```sh
-docker compose up -d --build
-docker compose ps
-docker compose logs -f caddy api
-```
-
-Cuando Caddy indique que obtuvo el certificado, abre `https://DASHBOARD_DOMAIN/` e inicia
-sesión con una de las cuentas configuradas. Para detener los servicios ejecuta
-`docker compose down` (sin `-v`, para conservar certificados y configuración). El broker MQTT,
-si se habilita, queda enlazado solo a localhost; no cambies esa restricción sin configurar
-autenticación y TLS para el broker.
-
-El despliegue fija `DASHBOARD_COOKIE_SECURE=true` y permite solo el host de
-`DASHBOARD_DOMAIN`. El secreto de sesión debe ser aleatorio y tener al menos 32 bytes. Cambia
-las contraseñas de muestra de `.env.example` y verifica el firewall del servidor antes de
-anunciar la dirección a otros usuarios.
+Esta ruta es una alternativa futura y distinta al acceso privado actual por Tailscale. El
+Compose conserva un servicio Caddy que termina HTTPS, pero **no hay VM, DNS público ni
+publicación general configurados**. Para activarla se requiere administrar un servidor
+Linux/VM, un nombre DNS que apunte a él, reglas de firewall para TCP 80/443, secretos propios
+y una política de copias de seguridad. No abras MySQL (3306), MQTT (1883) ni FastAPI (8000)
+directamente a Internet. La base MySQL del Compose usa un volumen persistente; `docker compose
+down` lo conserva y `docker compose down -v` lo elimina. Revisa la
+[guía oficial de HTTPS automático de Caddy](https://caddyserver.com/docs/automatic-https)
+antes de configurar esa arquitectura.
