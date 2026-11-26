@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Proyecto: Monitoreo ambiental en tiempo real (ODS 11 y 13)
--- Esquema relacional MySQL 8 (InnoDB) - BORRADOR v0.1 para revisar con el equipo
+-- Esquema relacional vigente para MySQL 8 (InnoDB)
 -- Fuente: JSON de metricas (sensor_id, pm2.5, co2, tmp, timestamp) y UML
 -- Nota: el JSON usa la clave "pm2.5"; en SQL la columna se llama pm25
 --       (el punto no es valido en nombres de columna).
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS alertas (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
--- DATOS INICIALES (valores PLACEHOLDER: confirmar con el equipo/PO)
+-- DATOS INICIALES (sensores de demostracion y umbrales documentados)
 -- ---------------------------------------------------------------------
 INSERT IGNORE INTO sensores (sensor_id, nombre) VALUES
   ('sensor_01', 'Sensor 01'),
@@ -134,7 +134,7 @@ INSERT IGNORE INTO umbrales (metrica, nivel, aplica_a, valor_limite, fuente) VAL
   ('tmp',  'critico',     'lectura',      32.20,    'PROVISIONAL: aire; NOM-015 evalua ITGBH ocupacional');
 
 -- ---------------------------------------------------------------------
--- EJEMPLO: insercion transaccional (lo que hara DatabaseManager en la semana 4)
+-- EJEMPLO: insercion transaccional (flujo implementado por DatabaseManager)
 -- ---------------------------------------------------------------------
 -- START TRANSACTION;
 --   INSERT INTO lecturas (sensor_id, pm25, co2, tmp, timestamp_lectura)

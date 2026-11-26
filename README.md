@@ -25,9 +25,11 @@ de agregados con detección de umbrales de contaminación.
   Workbench, preparación de la base de datos, ejecución de la demo y solución de problemas.
 - [Documentación técnica](docs/documentacion_tecnica.docx): arquitectura, operación,
   autenticación multiusuario y estado verificado del acceso privado por Tailscale.
-- [Documento de Justificación del Proyecto](docs/justificacion/Documento_Justificacion_Equipo_PC.pdf)
-- [Reporte Técnico de Métricas JSON](docs/reportes/Reporte_Tecnico_Metricas_JSON.pdf) y su
-  esquema vivo en [docs/metricas_schema.json](docs/metricas_schema.json)
+- [Documento de Justificación original del Sprint 0](docs/justificacion/Documento_Justificacion_Equipo_PC.pdf)
+  (incluye un complemento de integrantes del 22-oct-2026; para la arquitectura implementada,
+  consulta [docs/arquitectura.md](docs/arquitectura.md))
+- [Reporte Técnico de Métricas JSON](docs/reportes/Reporte_Tecnico_Metricas_JSON.pdf)
+  (propuesta inicial por lotes) y el [esquema vigente del payload MQTT por lectura](docs/metricas_schema.json)
 - [Diagrama de clases UML en PlantUML](docs/uml/diagrama_clases.puml) (fuente editable y
   actualizada; el [PDF](<docs/uml/Clase UML.pdf>) es una exportación anterior y podría no
   reflejar los últimos cambios del modelo)
@@ -135,8 +137,8 @@ conector de MySQL, etc.).
 ## Estado del proyecto
 
 Ver [docs/cronograma/cronograma.xlsx](docs/cronograma/cronograma.xlsx) para el detalle
-semana a semana (9 semanas, 4 sprints; el cronograma registra la presentación final planeada
-para el 23 de noviembre de 2026, pero el repositorio no confirma si se realizó). La demo
+semana a semana (9 semanas, 4 sprints). El equipo confirmó que la presentación final se realizó;
+su fecha exacta no está registrada en el repositorio. La demo
 funcional cubre productores simulados → cola concurrente → pool de consumidores → MySQL →
 API REST → dashboard WebSocket. La implementación también ofrece una suscripción MQTT opcional
 para dispositivos compatibles y conserva un simulador para demostración sin hardware. El

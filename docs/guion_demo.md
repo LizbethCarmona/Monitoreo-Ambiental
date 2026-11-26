@@ -59,7 +59,11 @@ WebSocket es el canal de salida entre FastAPI y el dashboard: transporta snapsho
 alertas que FastAPI consulta de MySQL. REST carga inicialmente el dashboard y su historial; si
 WebSocket se interrumpe, el navegador consulta REST temporalmente mientras intenta reconectar.
 
-## Evidencia que se debe anotar el día de la presentación
+## Registro de evidencia para el expediente final
+
+El equipo confirmó que la presentación final se realizó. La fecha exacta y el paquete de
+evidencias no están registrados en este repositorio; conserva esta lista para anexar la
+evidencia disponible sin presentarla como verificación independiente.
 
 - Fecha, versión/commit demostrado y nombres de responsables.
 - Resultado y tiempo de la prueba C++ de concurrencia.

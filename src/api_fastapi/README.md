@@ -188,9 +188,12 @@ define `$env:MQTT_CLIENT_ID = "monitoreo-api-local"` antes de iniciar Uvicorn.
    ..\..\.venv\Scripts\python.exe -m app.simulador_mqtt --sensores 3 --intervalo 2
    ```
 
-El topic tiene la forma `monitoreo/lecturas/{sensor_id}` y el payload sigue
-[docs/metricas_schema.json](../../docs/metricas_schema.json). El `sensor_id` del JSON debe
-coincidir con el del topic. El publicador es un simulador de prueba, no un sensor físico.
+Cada topic tiene la forma `monitoreo/lecturas/{sensor_id}` y transporta un objeto JSON con una
+sola lectura, conforme a [docs/metricas_schema.json](../../docs/metricas_schema.json). El
+`sensor_id` del JSON debe coincidir con el topic. La API valida los rangos numéricos y la fecha,
+normaliza el timestamp a UTC y rechaza fechas futuras; los campos adicionales se ignoran. El
+reporte PDF de métricas conserva la propuesta inicial por lotes, no el contrato MQTT actual.
+El publicador es un simulador de prueba, no un sensor físico.
 El simulador incluido fecha las lecturas 2 segundos antes para absorber desfases pequeños
 entre el reloj del host y el de Docker; los publicadores reales deben sincronizar sus relojes,
 porque la API rechaza timestamps futuros.

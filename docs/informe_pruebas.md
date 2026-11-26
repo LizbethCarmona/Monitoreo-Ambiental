@@ -121,5 +121,6 @@ valores se identifica como simulada o externa; el prototipo no consulta un servi
 - El 6-nov-2026 una consulta de solo lectura mientras el simulador estaba activo encontró
   9,834 lecturas, 5,337 alertas y 3 sensores. Es una observación puntual: los conteos cambian
   conforme se generan datos sintéticos.
-- La presentación calendarizada solo puede marcarse realizada en su fecha. El guion y los
-  comandos reproducibles quedan preparados por el equipo.
+- El equipo confirmó que la presentación final se realizó y el cronograma refleja ese cierre.
+  La fecha exacta y el paquete de evidencias de la presentación no están registrados en este
+  repositorio; no se infieren como verificación independiente.

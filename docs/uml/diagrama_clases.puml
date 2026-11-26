@@ -40,6 +40,8 @@ class DatabaseManager {
     + registrarAlerta(alerta: String): bool
 }
 
+class MySQLDatabase <<database>>
+
 class APIServiceFastAPI {
     + getEstadoClima(): JSON
     + getAlertas(): JSON
@@ -54,8 +56,9 @@ SensorHiloProductor ..> MetricaSensor : crea
 ColaConcurrente "1" o-- "*" MetricaSensor : almacena
 SensorHiloProductor --> ColaConcurrente : produce
 ThreadPoolConsumidor --> ColaConcurrente : consume
-ThreadPoolConsumidor --> DatabaseManager : persiste datos
-APIServiceFastAPI --> DatabaseManager : consulta datos
+ThreadPoolConsumidor --> DatabaseManager : persiste datos C++
+DatabaseManager --> MySQLDatabase : persiste lecturas y alertas
+APIServiceFastAPI --> MySQLDatabase : consulta y persiste ingesta MQTT
 APIServiceFastAPI --> DashboardCliente : difunde snapshots por WS /ws/dashboard
 
 note on link

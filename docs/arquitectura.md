@@ -109,7 +109,7 @@ consultas también limitan resultados a `UTC_TIMESTAMP()` para excluir filas fut
 se insertaron por la ruta C++ o directamente en MySQL. No se rechazan lecturas antiguas, por lo
 que la última fila puede ser obsoleta si no hay una reciente; los relojes de publicadores, API y
 MySQL deben estar sincronizados.
-Las alertas persistidas actuales son puntuales y se genera como máximo una alerta por lectura. Los
+Las alertas persistidas actuales son puntuales; se genera como máximo una por lectura. Los
 límites tienen las fuentes y reservas descritas en el esquema; no todos aplican a lecturas puntuales. Aquí ocurre
 el **procesamiento paralelo**: cada trabajador procesa un dato de forma independiente y solo
 se sincroniza con el resto al leer/escribir el acumulador compartido de agregados, protegido
