@@ -16,9 +16,9 @@ from . import db
 
 _TOPIC_SENSOR = re.compile(r"^monitoreo/lecturas/([A-Za-z0-9][A-Za-z0-9_.-]{0,49})$")
 _METRICAS = (
-    ("pm25", "pm2.5"),
-    ("co2", "co2"),
-    ("tmp", "tmp"),
+    "pm25",
+    "co2",
+    "tmp",
 )
 
 
@@ -67,20 +67,23 @@ def validar_mensaje_mqtt(topic: str, payload: bytes) -> LecturaValidada:
         raise ValueError("timestamp debe ser una fecha ISO-8601 valida.") from exc
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         raise ValueError("timestamp debe incluir su zona horaria.")
+    timestamp_utc = timestamp.astimezone(timezone.utc)
+    if timestamp_utc > datetime.now(timezone.utc):
+        raise ValueError("timestamp no puede estar en el futuro.")
 
     return LecturaValidada(
         sensor_id=sensor_id,
         pm25=valores["pm2.5"],
         co2=valores["co2"],
         tmp=valores["tmp"],
-        timestamp=timestamp.astimezone(timezone.utc),
+        timestamp=timestamp_utc,
     )
 
 
 def elegir_alerta(lectura: LecturaValidada, umbrales: dict) -> tuple | None:
     candidatos = []
-    for metrica, campo in _METRICAS:
-        valor = getattr(lectura, "pm25" if metrica == "pm25" else metrica)
+    for metrica in _METRICAS:
+        valor = getattr(lectura, metrica)
         for nivel in ("critico", "advertencia"):
             limite = umbrales.get((metrica, nivel, "lectura"))
             if limite is not None and valor >= limite:
@@ -212,7 +215,10 @@ class IngestorMQTT:
         with self._lock:
             self._estado = "detenido"
 
-    def _al_conectar(self, client, _userdata, _flags, reason_code, _properties) -> None:
+    def _al_conectar(
+        self, client, _userdata, _flags, reason_code, _properties
+    ) -> None:
+        del _userdata, _flags, _properties
         if reason_code.is_failure:
             error = f"El broker MQTT rechazo la conexion: {reason_code}"
             with self._lock:
@@ -224,13 +230,17 @@ class IngestorMQTT:
             self._estado = "conectado"
             self._ultimo_error = None
 
-    def _al_desconectar(self, _client, _userdata, _disconnect_flags, reason_code, _properties) -> None:
+    def _al_desconectar(
+        self, _client, _userdata, _disconnect_flags, reason_code, _properties
+    ) -> None:
+        del _client, _userdata, _disconnect_flags, _properties
         with self._lock:
             self._estado = "desconectado" if reason_code.is_failure else "detenido"
             if reason_code.is_failure:
                 self._ultimo_error = f"Se perdio la conexion con MQTT: {reason_code}"
 
     def _al_mensaje(self, client, _userdata, mensaje) -> None:
+        del _userdata
         try:
             lectura = validar_mensaje_mqtt(mensaje.topic, mensaje.payload)
             resultado = persistir_lectura_mqtt(lectura)
@@ -246,7 +256,7 @@ class IngestorMQTT:
                 self._ultimo_error = str(exc)
             import logging
 
-            logging.getLogger(__name__).exception("Se rechazo una lectura MQTT.")
+            logging.getLogger(__name__).warning("Se rechazo una lectura MQTT: %s", exc)
             client.ack(mensaje.mid, mensaje.qos)
         except MySQLError as exc:
             with self._lock:

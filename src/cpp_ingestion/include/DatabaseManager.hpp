@@ -35,9 +35,10 @@ public:
     DatabaseManager& operator=(const DatabaseManager&) = delete;
 
     // Guarda la lectura y, si se recibe una alerta, la guarda en la MISMA
-    // transaccion real (START TRANSACTION ... COMMIT / ROLLBACK). Registra
-    // automaticamente el sensor en la tabla `sensores` la primera vez que se
-    // ve su sensor_id (INSERT IGNORE), para no romper la FK de `lecturas`.
+    // transaccion real (START TRANSACTION ... COMMIT / ROLLBACK). Antes de
+    // iniciar esa transaccion registra automaticamente el sensor en la tabla
+    // `sensores` la primera vez que se ve (INSERT IGNORE); ese registro puede
+    // quedar aunque falle despues la escritura de lectura/alerta.
     // Devuelve false ante error de BD; los duplicados (mismo sensor_id +
     // timestamp, error 1062) se consideran "manejados" y no se cuentan como
     // error fatal, solo se omiten (igual que carga_concurrente.py).

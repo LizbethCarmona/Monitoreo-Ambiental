@@ -1,8 +1,9 @@
 """API REST del proyecto Monitoreo ambiental en tiempo real.
 
-Implementa la clase `APIServiceFastAPI` del UML (ver
-docs/uml/diagrama_clases.puml) consultando MySQL (src/database/schema.sql):
-getEstadoClima() y getAlertas() leen las tablas
+Implementa mediante manejadores de ruta a nivel de módulo la API representada como
+`APIServiceFastAPI` en el UML (no existe una clase con ese nombre; ver
+docs/uml/diagrama_clases.puml). `get_estado_clima()` y `get_alertas()` consultan MySQL
+(src/database/schema.sql) y leen las tablas
 `lecturas`, `alertas`, `sensores` y `umbrales` que el núcleo concurrente en
 C++ (src/cpp_ingestion) va llenando con lecturas simuladas. La persistencia es
 real; también puede recibir mensajes de sensores externos por MQTT cuando el suscriptor
@@ -20,6 +21,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -199,6 +201,7 @@ CIUDAD_NOMBRE = os.getenv("CIUDAD_NOMBRE", "Ciudad de Mexico")
 
 _DIAS = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
 _MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+_ZONA_CDMX = ZoneInfo("America/Mexico_City")
 
 _ETIQUETA_NIVEL = {"normal": "Normal", "advertencia": "Advertencia", "critico": "Critico"}
 _UNIDAD_METRICA = {"pm25": "\u00b5g/m\u00b3", "co2": "ppm", "tmp": "\u00b0C"}
@@ -207,6 +210,10 @@ _TITULO_METRICA = {"pm25": "PM2.5", "co2": "CO2", "tmp": "Temperatura"}
 
 def _fecha_es(dt: datetime) -> str:
     return f"{_DIAS[dt.weekday()]}, {dt.day} {_MESES[dt.month - 1]}"
+
+
+def _fecha_cdmx(dt: datetime) -> str:
+    return _fecha_es(dt.astimezone(_ZONA_CDMX))
 
 
 def _hora_label(dt: datetime) -> str:
@@ -233,7 +240,7 @@ def _nivel_de(umbrales: dict, metrica: str, valor, aplica_a: str = "lectura") ->
     return "normal"
 
 
-@app.get("/estado-clima", summary="Equivalente a APIServiceFastAPI.getEstadoClima()")
+@app.get("/estado-clima", summary="Estado del clima actual")
 def get_estado_clima() -> dict:
     try:
         conn = db.conectar()
@@ -249,6 +256,7 @@ def get_estado_clima() -> dict:
 
         cursor.execute(
             "SELECT sensor_id, pm25, co2, tmp, timestamp_lectura FROM lecturas "
+            "WHERE timestamp_lectura <= UTC_TIMESTAMP() "
             "ORDER BY timestamp_lectura DESC LIMIT 1"
         )
         ultima = cursor.fetchone()
@@ -256,17 +264,22 @@ def get_estado_clima() -> dict:
         cursor.execute(
             "SELECT MIN(tmp), MAX(tmp) FROM lecturas "
             "WHERE timestamp_lectura >= UTC_DATE() "
-            "AND timestamp_lectura < UTC_DATE() + INTERVAL 1 DAY"
+            "AND timestamp_lectura < UTC_DATE() + INTERVAL 1 DAY "
+            "AND timestamp_lectura <= UTC_TIMESTAMP()"
         )
         temp_min, temp_max = cursor.fetchone()
 
         cursor.execute(
-            "SELECT AVG(pm25) FROM lecturas WHERE timestamp_lectura >= UTC_TIMESTAMP() - INTERVAL 24 HOUR"
+            "SELECT AVG(pm25) FROM lecturas "
+            "WHERE timestamp_lectura >= UTC_TIMESTAMP() - INTERVAL 24 HOUR "
+            "AND timestamp_lectura <= UTC_TIMESTAMP()"
         )
         (pm25_prom_24h,) = cursor.fetchone()
 
         cursor.execute(
-            "SELECT AVG(co2) FROM lecturas WHERE timestamp_lectura >= UTC_TIMESTAMP() - INTERVAL 8 HOUR"
+            "SELECT AVG(co2) FROM lecturas "
+            "WHERE timestamp_lectura >= UTC_TIMESTAMP() - INTERVAL 8 HOUR "
+            "AND timestamp_lectura <= UTC_TIMESTAMP()"
         )
         (co2_prom_8h,) = cursor.fetchone()
 
@@ -274,6 +287,7 @@ def get_estado_clima() -> dict:
             "SELECT DATE_FORMAT(timestamp_lectura, '%Y-%m-%d %H:00:00') AS hora_bucket, "
             "AVG(tmp) AS temp_prom, AVG(pm25) AS pm25_prom "
             "FROM lecturas WHERE timestamp_lectura >= UTC_TIMESTAMP() - INTERVAL 24 HOUR "
+            "AND timestamp_lectura <= UTC_TIMESTAMP() "
             "GROUP BY hora_bucket ORDER BY hora_bucket DESC LIMIT 24"
         )
         filas_hora = list(cursor.fetchall())[::-1]  # orden ascendente para mostrar de izq. a der.
@@ -307,7 +321,7 @@ def get_estado_clima() -> dict:
     ahora = datetime.now(timezone.utc)
     return {
         "ciudad": CIUDAD_NOMBRE,
-        "fecha": _fecha_es(ahora),
+        "fecha": _fecha_cdmx(ahora),
         "sensores_activos": sensores_activos,
         "sensor_ultima_lectura": sensor_ultima_lectura,
         "hora_ultima_lectura_utc": hora_ultima_lectura,
@@ -333,7 +347,7 @@ def get_estado_clima() -> dict:
     }
 
 
-@app.get("/alertas", summary="Equivalente a APIServiceFastAPI.getAlertas()")
+@app.get("/alertas", summary="Alertas no atendidas")
 def get_alertas() -> dict:
     try:
         conn = db.conectar()

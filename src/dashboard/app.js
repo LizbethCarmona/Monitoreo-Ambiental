@@ -30,6 +30,16 @@ async function obtenerJSON(ruta) {
   return resp.json();
 }
 
+function formatearFechaCDMX(timestamp) {
+  const fecha = new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Mexico_City",
+  }).format(new Date(timestamp));
+  return fecha.charAt(0).toLocaleUpperCase("es-MX") + fecha.slice(1);
+}
+
 function pintarEstadoClima(datos) {
   const mostrar = (valor, sufijo = "") =>
     valor === null || valor === undefined ? "—" : `${valor}${sufijo}`;
@@ -44,7 +54,7 @@ function pintarEstadoClima(datos) {
   document.getElementById("subtitulo").textContent =
     `${datos.ciudad} · ${datos.sensores_activos} sensores activos`;
   document.getElementById("ciudad").textContent = datos.ciudad;
-  document.getElementById("fecha").textContent = datos.fecha;
+  document.getElementById("fecha").textContent = formatearFechaCDMX(datos.actualizado);
   document.getElementById("temp-actual").textContent =
     datos.temperatura_actual === null ? "—°" : `${Math.round(datos.temperatura_actual)}°`;
   const hayLectura = datos.temperatura_actual != null || datos.pm2_5 != null || datos.co2 != null;

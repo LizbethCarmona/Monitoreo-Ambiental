@@ -6,7 +6,7 @@ import json
 import os
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import paho.mqtt.client as mqtt
 
@@ -51,7 +51,10 @@ def main() -> int:
                     "pm2.5": round(pm25, 2),
                     "co2": round(generador.uniform(380.0, 1200.0), 2),
                     "tmp": round(generador.uniform(15.0, 33.0), 2),
-                    "timestamp": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+                    # Absorbe desfases pequeños entre los relojes del host y Docker.
+                    "timestamp": (
+                        datetime.now(timezone.utc) - timedelta(seconds=2)
+                    ).isoformat(timespec="milliseconds").replace("+00:00", "Z"),
                 }
                 resultado = client.publish(
                     f"monitoreo/lecturas/{sensor_id}",

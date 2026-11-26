@@ -4,7 +4,7 @@
 > [Documento de Justificación](justificacion/Documento_Justificacion_Equipo_PC.pdf) y el
 > [diagrama de clases UML](uml/diagrama_clases.puml).
 
-## Diagrama de componentes y flujo de datos
+## Diagrama de componentes — ruta C++
 
 ```
 ┌─────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐
@@ -32,13 +32,17 @@
                                                                                 ▼
                                                                   ┌───────────────────────────┐
                                                                   │   APIServiceFastAPI        │
-                                                                  │  getEstadoClima()/         │
-                                                                  │  getAlertas()               │
+                                                                  │  get_estado_clima()/       │
+                                                                  │  get_alertas()              │
                                                                   └─────────────┬─────────────┘
                                                                                 │
                                                                                 ▼
                                                                         Dashboard / clientes
 ```
+
+La ruta alternativa de ingesta MQTT es:
+`publicador/simulador → Mosquitto → IngestorMQTT (FastAPI) → MySQL`; después FastAPI
+consulta MySQL y entrega snapshots al dashboard por REST/WebSocket.
 
 ## Descripción
 
@@ -48,6 +52,8 @@ QoS 1 y confirma la lectura con alerta puntual en una transacción. Clientes del
 reciben snapshots por `WS /ws/dashboard`; un único publicador consulta MySQL cada dos segundos
 y difunde el estado a todos los clientes conectados. El dashboard usa consultas REST periódicas
 solo como compatibilidad durante la reconexión o mientras la API desplegada se actualiza.
+Las cuentas autenticadas mantienen sesiones individuales, pero no particionan los datos: todos
+los usuarios autorizados consultan las mismas lecturas y alertas.
 
 **WebSocket** (`/ws/dashboard`) es el canal persistente entre el navegador y FastAPI para
 actualizaciones del dashboard: al conectar, el navegador recibe un snapshot JSON con el estado
@@ -97,19 +103,30 @@ Del otro lado, un **pool de hilos consumidores** (`ThreadPoolConsumidor`) extrae
 cola de forma segura, acumula estadísticas por sensor durante el proceso y evalúa si algún
 valor puntual supera los umbrales de lectura configurados en `src/database/schema.sql` (tabla
 `umbrales`). La API calcula los promedios móviles de 8 h y 24 h por separado y los compara con
-sus propios límites. Las alertas persistidas actuales son puntuales. Los límites tienen las
-fuentes y reservas descritas en el esquema; no todos aplican a lecturas puntuales. Aquí ocurre
+sus propios límites. Son promedios aritméticos de todas las filas de todos los sensores dentro
+de ventanas móviles; cada fila pesa igual, aunque los sensores publiquen con frecuencias
+distintas. La lectura más reciente del estado también es global, mientras que `sensores_activos`
+cuenta sensores marcados `activo = 1` en el catálogo, no conectividad reciente. Estos indicadores
+no verifican cobertura de muestreo ni equivalen a una evaluación de cumplimiento normativo.
+El ingestor MQTT normaliza timestamps con zona horaria a UTC y rechaza fechas futuras. Las
+consultas también limitan resultados a `UTC_TIMESTAMP()` para excluir filas futuras, incluso si
+se insertaron por la ruta C++ o directamente en MySQL. No se rechazan lecturas antiguas, por lo
+que la última fila puede ser obsoleta si no hay una reciente; los relojes de publicadores, API y
+MySQL deben estar sincronizados.
+Las alertas persistidas actuales son puntuales; se genera como máximo una por lectura. Los
+límites tienen las fuentes y reservas descritas en el esquema; no todos aplican a lecturas puntuales. Aquí ocurre
 el **procesamiento paralelo**: cada trabajador procesa un dato de forma independiente y solo
 se sincroniza con el resto al leer/escribir el acumulador compartido de agregados, protegido
 con mutex.
 
-La **persistencia** ocurre exclusivamente en `DatabaseManager`, que agrupa en una sola
-transacción ACID el `INSERT` de la lectura y, si corresponde, el `INSERT` de la alerta
-asociada (ver `src/database/schema.sql` y el ejemplo de `START TRANSACTION ... COMMIT`), de
-forma que dos hilos escribiendo al mismo tiempo nunca dejen una alerta huérfana ni una lectura
-duplicada (restricción `UNIQUE KEY uq_sensor_momento`).
+Ambas rutas persisten la lectura y, si corresponde, su alerta asociada dentro de una transacción
+ACID. En C++, `DatabaseManager` ejecuta esa transacción; el `INSERT IGNORE` que registra un sensor
+ocurre antes y puede persistir aunque falle la lectura. En la ruta MQTT, `persistir_lectura_mqtt()`
+incluye el registro del sensor en la transacción y el suscriptor confirma el mensaje después del
+commit. En C++, el mutex serializa el uso de la conexión compartida y la restricción
+`UNIQUE KEY uq_sensor_momento` evita duplicar la misma lectura.
 
-Finalmente, `APIServiceFastAPI` expone endpoints REST de consulta, ingesta MQTT y un endpoint
+Finalmente, la aplicación FastAPI expone endpoints REST de consulta, ingesta MQTT y un endpoint
 WebSocket (`/ws/dashboard`) que difunde snapshots basados en MySQL a los navegadores. El
 simulador MQTT facilita validar el protocolo sin hardware; un dispositivo real debe publicar
 el formato documentado y requiere calibración. La ubicación del panel se configura con
@@ -121,7 +138,7 @@ el formato documentado y requiere calibración. La ubicación del panel se confi
 |---|---|---|
 | Concurrencia (ingesta) | `SensorHiloProductor` → `ColaConcurrente` | hilos productores + mutex/condition_variable |
 | Concurrencia (procesamiento) | `ThreadPoolConsumidor` | pool de hilos + mutex sobre el acumulador de agregados |
-| Persistencia | `DatabaseManager` → MySQL | transacciones ACID |
+| Persistencia | `DatabaseManager` (C++) / `persistir_lectura_mqtt()` (FastAPI) → MySQL | transacción para lectura y alerta asociada |
 | Entrada de red | `IngestorMQTT` → MySQL | suscripción MQTT QoS 1, validación, commit antes del ACK |
 | Actualizaciones del dashboard | `HubDashboard` → `WS /ws/dashboard` | canal persistente; snapshot JSON compartido de estado y alertas cada ~2 s, `ping`/`pong` |
 
@@ -141,6 +158,14 @@ semana. Resumen rápido (actualizado tras conectar el flujo extremo a extremo de
 - **Sprint 4 (semanas 7-8):** dashboard, pruebas concurrentes/de persistencia, manual y guion de
   demostración — código/documentación entregados. Las pruebas que requieren MySQL se ejecutan
   con credenciales autorizadas y su resultado debe quedar registrado.
+
+### Revalidación funcional del 25 de noviembre de 2026
+
+La API pasó 27/27 pruebas con Mosquitto real; la prueba de configuración SQL pasó 1/1 y las
+dos pruebas C++ pasaron. Compose validó su configuración. Tras reiniciar la instancia local,
+FastAPI informó MySQL y MQTT conectados y el dashboard mostró la fecha de CDMX correctamente.
+El [informe de pruebas](informe_pruebas.md) detalla comandos, resultados históricos y límites
+de la evidencia.
 
 ### Cómo correr el flujo completo
 

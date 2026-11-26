@@ -125,6 +125,11 @@ se ve el dashboard (`src/dashboard/`) actualizarse con lecturas simuladas almace
   persistencia; el modo finito falla si alguna lectura no queda guardada o reconocida como
   duplicada.
 
+Revalidación del 25-nov-2026 con MSYS2 UCRT64: `make test` pasó ambas pruebas; el acumulador
+protegido alcanzó 400 000 incrementos y la cola procesó 30 000 elementos sin pérdidas ni
+duplicados. Son pruebas de concurrencia, no una prueba de capacidad máxima de MySQL.
+El [informe general](../../docs/informe_pruebas.md) reúne la evidencia de los demás componentes.
+
 ## Límites y configuración de la demo
 
 - Las lecturas sintéticas sirven para demostrar concurrencia; las mediciones físicas requieren

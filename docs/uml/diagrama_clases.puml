@@ -15,9 +15,11 @@ class ColaConcurrente {
     - mtx: std::mutex
     - cv_productores: std::condition_variable
     - cv_consumidores: std::condition_variable
-    - capacidad_maxima: int
+    - capacidad_maxima: std::size_t
+    - cerrada: bool
     + push(data: MetricaSensor): void
-    + pop(): MetricaSensor
+    + pop(): std::optional<MetricaSensor>
+    + cerrar(): void
 }
 
 class SensorHiloProductor {
@@ -27,35 +29,81 @@ class SensorHiloProductor {
 }
 
 class ThreadPoolConsumidor {
+    + ThreadPoolConsumidor(num_workers: int, cola: ColaConcurrente&, db: DatabaseManager&)
+    + iniciar(): void
+    + esperarFinalizacion(): void
+    + totalProcesadas(): long
+    + totalAlertas(): long
+    + totalErroresPersistencia(): long
+    + agregados(): const AcumuladorAgregados&
+    - procesarMetricas(): void
+    - calcularPromediosParalelo(data: const MetricaSensor&): void
+    - evaluarUmbrales(data: const MetricaSensor&, salida: Alerta&): bool
     - num_workers: int
+    - cola: ColaConcurrente&
+    - db: DatabaseManager&
+    - umbrales: UmbralesLectura
     - trabajadores: std::vector<std::thread>
-    + procesarMetricas(): void
-    + calcularPromediosParalelo(): void
-    + evaluarUmbrales(data: MetricaSensor): void
+    - agregados: AcumuladorAgregados
+    - total_procesadas: std::atomic<long>
+    - total_alertas: std::atomic<long>
+    - total_errores_persistencia: std::atomic<long>
+}
+
+class Alerta {
+    + sensor_id: String
+    + metrica: String
+    + nivel: String
+    + valor_medido: double
+    + valor_limite: double
+    + mensaje: String
 }
 
 class DatabaseManager {
-    - db_connection: MySQL_Conn
-    + guardarLecturaTransaccional(data: MetricaSensor): bool
-    + registrarAlerta(alerta: String): bool
+    - conexion: void*
+    + guardarLecturaTransaccional(data: const MetricaSensor&, alerta_opcional: const Alerta*): bool
+    + cargarUmbralesLectura(): UmbralesLectura
 }
 
-class APIServiceFastAPI {
-    + getEstadoClima(): JSON
-    + getAlertas(): JSON
-    + websocketDashboard(): JSON
+class MySQLDatabase <<database>>
+
+class IngestorMQTT {
+    + iniciar(): void
+    + detener(): void
+    + estado: dict
 }
 
-class DashboardCliente {
+class APIServiceFastAPI <<conceptual facade>> {
+    + get_estado_clima(): dict
+    + get_alertas(): dict
+    + get_historial_alertas(limite: int): dict
+    + get_salud(): dict
+    + websocket_dashboard(websocket: WebSocket): void
+}
+
+class DashboardCliente <<conceptual client>> {
     + recibirSnapshot(estado: JSON, alertas: JSON): void
 }
+
+note right of APIServiceFastAPI
+  Vista conceptual: la app real usa manejadores
+  FastAPI a nivel de módulo, no una clase con
+  este nombre. La implementación está en app.main.
+  El historial devuelve 100 elementos por defecto
+  y acepta límites de 1 a 500.
+end note
 
 SensorHiloProductor ..> MetricaSensor : crea
 ColaConcurrente "1" o-- "*" MetricaSensor : almacena
 SensorHiloProductor --> ColaConcurrente : produce
 ThreadPoolConsumidor --> ColaConcurrente : consume
-ThreadPoolConsumidor --> DatabaseManager : persiste datos
-APIServiceFastAPI --> DatabaseManager : consulta datos
+ThreadPoolConsumidor --> DatabaseManager : persiste datos C++
+ThreadPoolConsumidor ..> Alerta : genera opcionalmente
+DatabaseManager ..> Alerta : persiste en la misma transacción
+DatabaseManager --> MySQLDatabase : persiste lecturas y alertas
+APIServiceFastAPI --> IngestorMQTT : inicia/detiene con lifespan
+APIServiceFastAPI --> MySQLDatabase : consulta estado y alertas
+IngestorMQTT --> MySQLDatabase : valida y persiste lecturas MQTT
 APIServiceFastAPI --> DashboardCliente : difunde snapshots por WS /ws/dashboard
 
 note on link

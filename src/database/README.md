@@ -83,6 +83,12 @@ limpió la instancia local de demostración: se eliminaron 15,040 alertas y 32,3
 se verificaron ambas tablas en cero. Las tablas, sensores y umbrales se conservaron. Las nuevas
 lecturas y alertas volverán a aparecer en cuanto se ejecute un productor.
 
+En la revalidación del 25-nov-2026 pasó la prueba automatizada de configuración SQL (1/1), que
+comprueba la lectura de host, puerto, usuario y esquema desde `MYSQL_*`. Esta prueba no ejecuta
+una carga sobre la base; la última carga MySQL de 10 000 intentos sigue siendo la evidencia
+histórica descrita arriba. Consulta el [informe de pruebas](../../docs/informe_pruebas.md) para
+distinguir ambos alcances.
+
 ### Dejar vacío el historial del dashboard
 
 Detén primero el simulador MQTT y cualquier productor C++ para que no inserten datos durante la
@@ -127,7 +133,7 @@ Esta base de datos ya está conectada de verdad a los otros dos componentes:
 
 - `src/cpp_ingestion/` (`DatabaseManager`) inserta aquí las lecturas simuladas y alertas que
   genera el núcleo concurrente (ver `make run-continuo` en su README).
-- `src/api_fastapi/` lee de aquí para `getEstadoClima()`/`getAlertas()`.
+- `src/api_fastapi/` lee de aquí para `get_estado_clima()`/`get_alertas()`.
 
 Los tres componentes admiten las variables de entorno
 (`MYSQL_HOST`/`MYSQL_PORT`/`MYSQL_USER`/`MYSQL_PASSWORD`/`MYSQL_DATABASE`). En el script de
@@ -143,8 +149,10 @@ alertas basadas en esos promedios.
 
 - PM2.5: NOM-025-SSA1-2021, Tabla 1, contiene valores graduales de 41, 33 y 25 µg/m³ para
   promedio de 24 h (Año 1, Año 3 y Año 5). El esquema usa 25 como referencia de fase Año 5
-  al 14 de octubre de 2026. Los niveles instantáneos 35/75 µg/m³ son criterios del prototipo,
-  no niveles de alerta establecidos por esa NOM.
+  para el año calendario 2026. La API calcula un promedio móvil global de las filas disponibles:
+  no valida cobertura por sitio, no calcula el percentil 99 ni el promedio anual requeridos para
+  evaluar cumplimiento. Los niveles instantáneos 35/75 µg/m³ son criterios del prototipo, no
+  niveles de alerta establecidos por esa NOM.
 - CO₂: NOM-010-STPS-2014, Apéndice I, Tabla I.1 (PDF p. 53), contiene VLE-PPT de 5,000 ppm
   y VLE-CT de 30,000 ppm. La definición 4.29 establece el nivel de acción como la mitad del
   VLE-PPT (2,500 ppm). Son referencias de exposición ocupacional; el VLE-CT no debe tratarse

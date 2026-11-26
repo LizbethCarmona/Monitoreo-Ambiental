@@ -63,6 +63,8 @@ el dashboard accesible a cualquier persona en Internet. Consulta la
   (`µg/m³`), su clasificación y la temperatura promedio (`°C`). El color solo corresponde a
   la clasificación de PM2.5, basada en los límites puntuales provisionales del prototipo; las
   horas se presentan en UTC.
+- La fecha del encabezado se deriva del timestamp ISO `actualizado` y se presenta en la zona
+  IANA `America/Mexico_City`, independientemente de la zona local del navegador.
 - En pantallas estrechas, la tabla se transforma en filas tipo ficha con el nombre de cada
   dato visible, para conservar legibles sus valores y unidades.
 - La tarjeta de alertas activas se mantiene como un panel independiente junto a la tarjeta
@@ -79,3 +81,11 @@ el dashboard accesible a cualquier persona en Internet. Consulta la
   meteorológico. La etiqueta «Fuente» identifica el sensor de esa última lectura; con el
   simulador, los valores son sintéticos y no provienen de hardware físico. El origen de los
   mensajes puede ser el simulador o un publicador MQTT configurado.
+- Los valores actuales proceden de la última fila global, no de una selección o promedio entre
+  sensores. Los promedios móviles y las gráficas horarias sí agregan las filas disponibles de
+  todos los sensores.
+
+En la verificación del 25-nov-2026 se comprobó el cruce de medianoche: un timestamp del
+26-nov en UTC se muestra como 25-nov en CDMX; las horas del historial siguen siendo UTC. La
+última revalidación completa está en el
+[informe de pruebas](../../docs/informe_pruebas.md).
