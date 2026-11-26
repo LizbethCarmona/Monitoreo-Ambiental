@@ -18,7 +18,7 @@ el contexto, los procedimientos de mantenimiento y el diagnóstico.
 ## Acceso multiusuario actual
 
 El dashboard compartido está disponible en
-[`https://desktop-994eo6e.tail6cf848.ts.net/dashboard/`](https://desktop-994eo6e.tail6cf848.ts.net/dashboard/),
+`https://<TAILNET_HOSTNAME>/dashboard/`,
 solo para integrantes autorizados en el tailnet de Tailscale. Cada integrante debe instalar
 [Tailscale](https://tailscale.com/download/windows), iniciar sesión en el tailnet al que fue
 invitado y después iniciar sesión en la aplicación con su propia cuenta. No compartas
@@ -224,8 +224,9 @@ Si tu carpeta dice `8.0` en lugar de `8.4`, cambia la ruta. Ya en `mysql>`, ejec
 > Si el proyecto ya se había instalado y contiene datos, **no borres la base ni vuelvas a
 > ejecutar instrucciones destructivas**. `schema.sql` crea objetos faltantes, pero los umbrales
 > existentes no se sobrescriben. Para una primera instalación nueva, el propio esquema ya
-> establece PM2.5 promedio de 24 horas en 25 µg/m³ (fase Año 5); no necesitas ejecutar la
-> migración `actualizar_umbrales_verificados.sql`.
+> establece PM2.5 promedio de 24 horas en 25 µg/m³ como referencia de fase Año 5; no necesitas
+> ejecutar la migración `actualizar_umbrales_verificados.sql`. Este indicador no certifica
+> cumplimiento de NOM-025.
 
 ## 5. Iniciar la demo completa
 
@@ -438,6 +439,11 @@ Set-Location "RUTA\A\LA\CARPETA\DEL\PROYECTO\src\api_fastapi"
 La prueba que usa un broker real es opcional: necesita iniciar Mosquitto y definir
 `$env:MQTT_TEST_BROKER = "127.0.0.1"` antes de lanzar las pruebas.
 
+En la revalidación del 25-nov-2026 pasaron 27/27 pruebas de API con Mosquitto real; también
+pasaron 1/1 prueba de configuración SQL y las dos pruebas C++. Estos resultados son evidencia
+de las verificaciones descritas, no una garantía de ausencia absoluta de errores. El detalle
+está en el [informe de pruebas](informe_pruebas.md).
+
 ## 10. Ejecutar el módulo C++ (opcional)
 
 El módulo C++ también genera datos sintéticos, pero compilarlo en Windows requiere MSYS2
@@ -449,7 +455,11 @@ están explicadas en [README del núcleo C++](../src/cpp_ingestion/README.md).
 
 - **Lectura** es una medición individual recibida y guardada; **promedio móvil** resume lecturas
   dentro de una ventana (por ejemplo, 8 o 24 horas). El dashboard agrupa lecturas por hora UTC
-  y solo muestra las horas que tienen datos.
+  y solo muestra las horas que tienen datos. Los promedios son globales: incluyen todas las
+  lecturas disponibles de todos los sensores y cada fila pesa igual, aunque la frecuencia de
+  publicación sea distinta. El ingestor exige timestamp ISO-8601 con zona horaria, lo convierte
+  a UTC y rechaza fechas futuras. Aun así, acepta timestamps antiguos; sincroniza los relojes del
+  publicador, API y MySQL, y verifica que el dashboard tenga lecturas recientes.
 - Las **alertas** guardadas se generan por superar un umbral de una lectura individual. Los
   promedios móviles se presentan aparte y no crean alertas persistidas en esta versión.
   “Alertas activas” son las filas no atendidas; “historial” incluye alertas atendidas y no
@@ -458,9 +468,11 @@ están explicadas en [README del núcleo C++](../src/cpp_ingestion/README.md).
   certificados.
 - PM2.5, CO₂ y temperatura tienen reglas de demostración y referencias que se describen en
   [README de la base de datos](../src/database/README.md).
-- PM2.5 promedio de 24 horas usa 25 µg/m³ como referencia de fase Año 5, aplicable al estado
-  del proyecto al 14 de octubre de 2026. Los niveles instantáneos del prototipo no son límites
-  de alerta definidos por la NOM-025.
+- PM2.5 promedio de 24 horas usa 25 µg/m³ como referencia de fase Año 5 para el año calendario
+  2026. No es una evaluación de cumplimiento NOM-025: el prototipo usa una ventana móvil,
+  no valida las 18 concentraciones horarias mínimas, ni calcula el percentil 99 ni el promedio
+  anual requeridos. Los niveles instantáneos del prototipo tampoco son límites de alerta
+  definidos por la NOM-025.
 - Las referencias de CO₂ citadas son ocupacionales y no deben interpretarse como umbrales
   instantáneos de calidad de aire ambiental.
 - Las alertas del prototipo corresponden a lecturas puntuales; los promedios móviles aparecen

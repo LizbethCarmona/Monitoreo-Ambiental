@@ -60,11 +60,19 @@ Set-Location src\api_fastapi
 Luego abre `http://127.0.0.1:8000/docs` para la documentación interactiva (Swagger UI), o
 prueba directamente:
 
-- `GET /estado-clima` — equivalente a `APIServiceFastAPI.getEstadoClima()`: última lectura,
-  mínimo/máximo del día UTC, promedios móviles de PM2.5 (24 h) y CO2 (8 h), y agregados
-  observados por hora, calculados sobre la tabla `lecturas`. El historial horario incluye
-  promedios separados de PM2.5 y temperatura, clasificación PM2.5 y fecha/hora UTC; contiene
-  solo horas con lecturas dentro de las últimas 24 h.
+- `GET /estado-clima` — equivalente a `APIServiceFastAPI.getEstadoClima()`: última lectura
+  global, mínimo/máximo del día UTC, promedios móviles de PM2.5 (24 h) y CO2 (8 h), y agregados
+  observados por hora, calculados sobre la tabla `lecturas`. Los promedios son `AVG` aritméticos
+  de todas las filas de todos los sensores en cada ventana; no están ponderados por tiempo ni
+  exigen una cobertura mínima. `sensores_activos` cuenta filas con `activo = 1` en el catálogo,
+  no sensores con conectividad reciente. Los timestamps MQTT deben incluir zona horaria, se
+  normalizan a UTC y se rechazan si están en el futuro. Las consultas filtran filas posteriores
+  a `UTC_TIMESTAMP()`, incluso si se insertaron por otra ruta. No se rechazan timestamps antiguos,
+  por lo que la última lectura puede ser obsoleta si no hay una reciente. El historial horario
+  incluye promedios separados de PM2.5 y temperatura, clasificación PM2.5 y fecha/hora UTC;
+  contiene solo horas con lecturas
+  dentro de las últimas 24 h. La fecha del encabezado se presenta en la zona `America/Mexico_City`;
+  timestamps y horas del historial permanecen en UTC.
 - `GET /alertas` — equivalente a `APIServiceFastAPI.getAlertas()`: lee la tabla `alertas`
   (`WHERE atendida = 0`), devuelve el total de alertas no atendidas y una lista de hasta 20
   recientes. “Activa” aquí significa no marcada como atendida; no es un detector continuo de
@@ -124,10 +132,9 @@ HTTPS. No uses Funnel: Funnel haría el servicio público para cualquier persona
 requiere una VM ni un dominio comprado, pero todos los equipos deben instalar Tailscale, iniciar
 sesión en el tailnet autorizado y tu computadora debe permanecer encendida, en línea y con Docker.
 
-En el despliegue actual el endpoint de esta computadora es
-`https://desktop-994eo6e.tail6cf848.ts.net/dashboard/`. El nombre es específico de este equipo;
-para otra máquina, establece `TAILNET_HOSTNAME` en el archivo privado `demo.env` con su nombre
-MagicDNS completo. Después de habilitar HTTPS en la consola Tailscale, desde la raíz aplica la
+El endpoint se forma como `https://<TAILNET_HOSTNAME>/dashboard/`, con el nombre MagicDNS
+completo del equipo configurado en el archivo privado `demo.env`. Después de habilitar HTTPS
+en la consola Tailscale, desde la raíz aplica la
 configuración de Compose:
 
 ```powershell
@@ -157,6 +164,10 @@ La API incluye un suscriptor MQTT 3.1.1. Al recibir un mensaje QoS 1, valida el 
 identidad, las tres métricas y un timestamp ISO-8601 con zona horaria; guarda lectura y alerta
 puntual en una transacción MySQL; y confirma el mensaje MQTT solamente después del commit.
 Un fallo transitorio de MySQL deja el mensaje sin ACK para permitir su reentrega por el broker.
+Cada proceso API que se conecte al mismo broker debe usar un `MQTT_CLIENT_ID` distinto, pues
+Mosquitto desconecta la sesión anterior si otro cliente usa su mismo identificador. Compose
+asigna `monitoreo-api-compose` por defecto; si ejecutas otra instancia local al mismo tiempo,
+define `$env:MQTT_CLIENT_ID = "monitoreo-api-local"` antes de iniciar Uvicorn.
 
 1. Inicia un broker solo de desarrollo en localhost desde `src/api_fastapi`:
 
@@ -180,6 +191,9 @@ Un fallo transitorio de MySQL deja el mensaje sin ACK para permitir su reentrega
 El topic tiene la forma `monitoreo/lecturas/{sensor_id}` y el payload sigue
 [docs/metricas_schema.json](../../docs/metricas_schema.json). El `sensor_id` del JSON debe
 coincidir con el del topic. El publicador es un simulador de prueba, no un sensor físico.
+El simulador incluido fecha las lecturas 2 segundos antes para absorber desfases pequeños
+entre el reloj del host y el de Docker; los publicadores reales deben sincronizar sus relojes,
+porque la API rechaza timestamps futuros.
 Para apagar el simulador, pulsa `Ctrl+C` en su terminal. Para apagar el broker de desarrollo,
 ejecuta `docker compose down` desde esta carpeta.
 
@@ -207,6 +221,11 @@ Set-Location src\api_fastapi
 ..\..\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
 ```
 
+Revalidación final del 25-nov-2026: 27/27 pruebas pasaron con Mosquitto real, incluyendo
+autenticación, API, WebSocket, MQTT, normalización UTC/CDMX y rechazo de timestamps futuros.
+Si no defines `MQTT_TEST_BROKER`, la prueba de integración con el broker real se omite.
+Consulta el [informe de pruebas](../../docs/informe_pruebas.md) para el alcance completo.
+
 ## Nota técnica: `use_pure=True`
 
 `db.py` fuerza la implementación pura en Python del conector (`use_pure=True`) en vez de su
@@ -217,12 +236,18 @@ segundo).
 
 ## Alcance de las alertas y los datos
 
-Las alertas puntuales se generan en cada lectura usando los límites aplicables a `lectura`.
-La API presenta promedios móviles de 8 h y 24 h con sus propios límites y no los compara con
-umbrales instantáneos. El esquema conserva únicamente alertas puntuales; límites de promedios
-se muestran como métricas de referencia, no como eventos disparados. Valores por lectura de
-PM2.5 y temperatura del aire son aproximaciones/provisionales: no equivalen a una certificación
-regulatoria. La ubicación de la interfaz es fija hasta que los sensores aporten ubicación.
+Las alertas puntuales se generan en cada lectura usando los límites aplicables a `lectura`;
+como máximo se persiste una alerta por lectura. La API presenta promedios móviles de 8 h y 24 h
+con sus propios límites y no los compara con umbrales instantáneos. El esquema conserva
+únicamente alertas puntuales; límites de promedios se muestran como métricas de referencia, no
+como eventos disparados. El promedio móvil de PM2.5 no equivale al promedio diario de NOM-025:
+no usa el periodo de 00:00 a 24:00, no valida el mínimo de 18 concentraciones horarias y no
+calcula el percentil 99 ni el promedio anual requeridos. El promedio de CO2 tampoco verifica
+exposición laboral ni pondera la duración de cada muestra. Por tanto, estos indicadores no
+demuestran cumplimiento normativo. Valores por lectura de PM2.5 y temperatura del aire son
+aproximaciones/provisionales. La ubicación de la interfaz es fija hasta que los sensores
+aporten ubicación. Sincroniza los relojes del publicador, API y MySQL; además, las lecturas
+antiguas pueden almacenarse y la última lectura mostrada podría no ser reciente.
 
 ## Alternativa futura: despliegue multiusuario en Internet
 

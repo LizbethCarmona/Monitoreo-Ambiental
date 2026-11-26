@@ -7,7 +7,7 @@ START TRANSACTION;
 
 UPDATE umbrales
 SET valor_limite = 25.00,
-    fuente = 'NOM-025-SSA1-2021, Tabla 1, fase Año 5 (2026-10-14)'
+    fuente = 'NOM-025-SSA1-2021, Tabla 1, fase Año 5 (2026; referencia, no cumplimiento)'
 WHERE metrica = 'pm25'
   AND nivel = 'critico'
   AND aplica_a = 'promedio_24h';

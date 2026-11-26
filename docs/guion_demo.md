@@ -32,9 +32,11 @@
 
 El 13 de octubre de 2026 se verificó localmente que `/salud` reportara la conexión a MySQL y
 MQTT, que el simulador publicara lecturas MQTT para tres sensores y que las lecturas pudieran
-consultarse en `/estado-clima` y verse en el dashboard por WebSocket. Es una comprobación
-funcional manual con datos sintéticos; no sustituye la prueba de carga concurrente SQL ni
-demuestra mediciones de sensores físicos.
+consultarse en `/estado-clima` y verse en el dashboard por WebSocket. En la revalidación del
+25 de noviembre de 2026, `/salud` volvió a informar ambas conexiones activas y se confirmó que
+el dashboard mostrara el día correspondiente a `America/Mexico_City` al cruzar la medianoche
+UTC. Son comprobaciones funcionales con datos sintéticos; no sustituyen la prueba histórica de
+carga SQL ni demuestran mediciones de sensores físicos.
 
 ## Demostración multiusuario
 

@@ -99,7 +99,7 @@ en la [guía de ingesta MQTT y API](src/api_fastapi/README.md).
 
 El acceso multiusuario ya está activo de forma **privada** mediante Tailscale Serve: los
 integrantes autorizados en el tailnet pueden abrir
-`https://desktop-994eo6e.tail6cf848.ts.net/dashboard/` e iniciar sesión con su propia cuenta
+`https://<TAILNET_HOSTNAME>/dashboard/` e iniciar sesión con su propia cuenta
 de la aplicación. La computadora anfitriona debe permanecer encendida y conectada. No es un
 sitio público; el despliegue público con Caddy/VM/DNS es una alternativa separada que todavía
 no está configurada. Consulta la [guía operativa de Tailscale](src/api_fastapi/README.md#compartir-de-forma-privada-con-tailscale).
@@ -135,15 +135,24 @@ conector de MySQL, etc.).
 ## Estado del proyecto
 
 Ver [docs/cronograma/cronograma.xlsx](docs/cronograma/cronograma.xlsx) para el detalle
-semana a semana (9 semanas, 4 sprints, presentación final el 23 de noviembre). La demo
+semana a semana (9 semanas, 4 sprints; el cronograma registra la presentación final planeada
+para el 23 de noviembre de 2026, pero el repositorio no confirma si se realizó). La demo
 funcional cubre productores simulados → cola concurrente → pool de consumidores → MySQL →
 API REST → dashboard WebSocket. La implementación también ofrece una suscripción MQTT opcional
 para dispositivos compatibles y conserva un simulador para demostración sin hardware. El
-historial muestra hasta 100 alertas recientes; los promedios móviles se consultan con sus
-umbrales diferenciados. La prueba MySQL concurrente de 10 000 intentos pasó el 14 de octubre
+historial muestra hasta 100 alertas recientes; los promedios móviles globales se consultan con
+sus umbrales diferenciados y son indicadores orientativos, no evaluaciones de cumplimiento
+normativo. La prueba MySQL concurrente de 10 000 intentos pasó el 14 de octubre
 de 2026; la interpretación y alcance de los umbrales están documentados en el
-[informe de pruebas](docs/informe_pruebas.md). La entrega presencial sigue su fecha académica programada: el proyecto
-prepara su guion de demostración, pero no puede marcar como celebrada una sesión futura.
+[informe de pruebas](docs/informe_pruebas.md).
+
+**Revalidación técnica (25 de noviembre de 2026):** pasaron 27/27 pruebas de API con Mosquitto
+real, 1/1 prueba de configuración SQL y las dos pruebas C++ (400 000 incrementos protegidos y
+30 000 elementos en la cola). `docker compose config --quiet` también pasó. Después de reiniciar
+la instancia local, `/salud` informó MySQL y MQTT conectados y cero errores en el contador del
+proceso nuevo; `/estado-clima` confirmó la fecha de CDMX y el dashboard continuó actualizándose.
+El informe describe el alcance y las limitaciones de estas verificaciones; no son una garantía
+de ausencia absoluta de bugs ni una certificación para producción.
 
 Los simuladores generan lecturas continuamente y el contenido de MySQL cambia durante la
 ejecución; las cifras de cargas anteriores son evidencia histórica, no describen el estado

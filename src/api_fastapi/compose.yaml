@@ -46,6 +46,7 @@ services:
       MQTT_ENABLED: ${MQTT_ENABLED:-false}
       MQTT_HOST: mqtt
       MQTT_PORT: "1883"
+      MQTT_CLIENT_ID: monitoreo-api-compose
     expose:
       - "8000"
     depends_on:

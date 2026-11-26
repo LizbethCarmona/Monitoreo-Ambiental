@@ -105,7 +105,9 @@ INSERT IGNORE INTO sensores (sensor_id, nombre) VALUES
 
 -- REFERENCIAS Y LIMITACIONES:
 --  * PM2.5: NOM-025-SSA1-2021, Tabla 1, fija una transicion para el promedio de 24 h:
---    41 (Año 1), 33 (Año 3) y 25 ug/m3 (Año 5). Para 2026-10-14 se usa la fase Año 5.
+--    41 (Año 1), 33 (Año 3) y 25 ug/m3 (Año 5). Para el año calendario 2026 se usa
+--    la fase Año 5 como referencia. La API calcula un promedio movil global de filas y no
+--    evalua cobertura por sitio, percentil 99 ni promedio anual; no determina cumplimiento.
 --    La NOM no define niveles de alerta "advertencia/critico" para lecturas instantaneas.
 --  * CO2: NOM-010-STPS-2014, Apendice I, Tabla I.1 (PDF p. 53): VLE-PPT 5,000 ppm y
 --    VLE-CT 30,000 ppm; este ultimo aplica a un periodo de hasta 15 minutos en centros de
@@ -122,7 +124,7 @@ INSERT IGNORE INTO sensores (sensor_id, nombre) VALUES
 --          https://dof.gob.mx/normasOficiales/5359/stps2a11_C/stps2a11_C.html
 -- NOM-015: https://www.stps.gob.mx/bp/secciones/dgsst/normatividad/normas/Nom-015.pdf
 INSERT IGNORE INTO umbrales (metrica, nivel, aplica_a, valor_limite, fuente) VALUES
-  ('pm25', 'critico',     'promedio_24h', 25.00,    'NOM-025-SSA1-2021, Tabla 1, fase Año 5 (2026-10-14)'),
+  ('pm25', 'critico',     'promedio_24h', 25.00,    'NOM-025-SSA1-2021, Tabla 1, fase Año 5 (2026; referencia, no cumplimiento)'),
   ('pm25', 'advertencia', 'lectura',      35.00,    'PROVISIONAL (definido por el equipo)'),
   ('pm25', 'critico',     'lectura',      75.00,    'PROVISIONAL (definido por el equipo)'),
   ('co2',  'advertencia', 'promedio_8h',  2500.00,  'Referencia NOM-010-STPS-2014 4.29; uso ambiental provisional'),

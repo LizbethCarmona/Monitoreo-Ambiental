@@ -126,11 +126,9 @@ std::string DatabaseManager::timestampIso8601AFechaMysql(const std::string& iso8
 }
 
 bool DatabaseManager::guardarLecturaTransaccional(const MetricaSensor& dato, const Alerta* alerta_opcional) {
-    // Todo el bloque (registrar sensor si falta, insertar lectura, insertar
-    // alerta) ocurre bajo un unico lock Y dentro de una unica transaccion de
-    // MySQL: o se confirman todas las escrituras (COMMIT) o ninguna
-    // (ROLLBACK), igual que exige la seccion 8 (Definition of Done) del
-    // Documento de Justificacion ("toda escritura mantiene la atomicidad").
+    // El registro del sensor se realiza antes de esta transaccion; puede
+    // permanecer en la tabla aunque falle la escritura de lectura/alerta.
+    // La transaccion explicita de abajo cubre la lectura y su alerta opcional.
     std::lock_guard<std::mutex> lock(mtx_);
     MYSQL* conn = comoMysql(conexion_);
 

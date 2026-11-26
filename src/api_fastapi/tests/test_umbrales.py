@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
@@ -11,7 +11,13 @@ from app.ingestion import (
     persistir_lectura_mqtt,
     validar_mensaje_mqtt,
 )
-from app.main import _cargar_umbrales, _nivel_de, get_estado_clima, get_historial_alertas
+from app.main import (
+    _cargar_umbrales,
+    _fecha_cdmx,
+    _nivel_de,
+    get_estado_clima,
+    get_historial_alertas,
+)
 from app.main import app
 
 
@@ -55,8 +61,10 @@ class CursorEstadoClimaDePrueba:
     def __init__(self):
         self.tipo_consulta = None
         self.consulta_horaria = None
+        self.consultas = []
 
     def execute(self, consulta):
+        self.consultas.append(consulta)
         if consulta.startswith("SELECT metrica"):
             self.tipo_consulta = "umbrales"
         elif "COUNT(*) FROM sensores" in consulta:
@@ -172,6 +180,11 @@ class ConexionHistorialDePrueba:
 
 
 class PruebasUmbrales(unittest.TestCase):
+    def test_fecha_cdmx_no_se_adelanta_al_dia_utc(self):
+        instante = datetime(2026, 11, 26, 1, 30, tzinfo=timezone.utc)
+
+        self.assertEqual(_fecha_cdmx(instante), "Miercoles, 25 nov")
+
     def test_carga_y_separa_aplicabilidad(self):
         cursor = CursorDePrueba()
         umbrales = _cargar_umbrales(cursor)
@@ -213,6 +226,13 @@ class PruebasUmbrales(unittest.TestCase):
                 },
             ],
         )
+        consultas_temporales = [
+            consulta
+            for consulta in conexion.cursor_de_prueba.consultas
+            if "timestamp_lectura" in consulta and "COUNT(*)" not in consulta
+        ]
+        for consulta in consultas_temporales:
+            self.assertIn("timestamp_lectura <= UTC_TIMESTAMP()", consulta)
         self.assertIn("LIMIT 24", conexion.cursor_de_prueba.consulta_horaria)
         self.assertTrue(conexion.cerrada)
 
@@ -283,6 +303,16 @@ class PruebasIngestionMQTT(unittest.TestCase):
         lectura = validar_mensaje_mqtt("monitoreo/lecturas/sensor_01", payload)
         self.assertEqual(lectura.timestamp, datetime(2026, 10, 14, 0, 0, tzinfo=timezone.utc))
 
+    def test_rechaza_timestamp_futuro(self):
+        futuro = (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat()
+        payload = (
+            '{"sensor_id":"sensor_01","pm2.5":10,"co2":800,"tmp":24.1,'
+            f'"timestamp":"{futuro}"' + "}"
+        ).encode()
+
+        with self.assertRaisesRegex(ValueError, "futuro"):
+            validar_mensaje_mqtt("monitoreo/lecturas/sensor_01", payload)
+
     def test_rechaza_topic_malformado_y_timestamp_sin_zona(self):
         payload = (
             b'{"sensor_id":"sensor_01","pm2.5":10,"co2":800,"tmp":24.1,'
@@ -292,6 +322,26 @@ class PruebasIngestionMQTT(unittest.TestCase):
             validar_mensaje_mqtt("otro/sensor_01", payload)
         with self.assertRaises(ValueError):
             validar_mensaje_mqtt("monitoreo/lecturas/sensor_01", payload)
+
+    def test_mensaje_mqtt_invalido_se_registra_como_aviso_y_se_confirma(self):
+        from app.ingestion import IngestorMQTT
+
+        cliente = Mock()
+        mensaje = Mock(
+            topic="monitoreo/lecturas/sensor_01",
+            payload=b"no es JSON",
+            mid=18,
+            qos=1,
+        )
+        ingestor = IngestorMQTT()
+        with self.assertLogs("app.ingestion", level="WARNING") as registro:
+            ingestor._al_mensaje(cliente, None, mensaje)
+
+        self.assertEqual(ingestor.estado["errores"], 1)
+        self.assertIn("JSON UTF-8", ingestor.estado["ultimo_error"])
+        self.assertEqual(len(registro.records), 1)
+        self.assertEqual(registro.records[0].levelname, "WARNING")
+        cliente.ack.assert_called_once_with(18, 1)
 
     def test_prioriza_alerta_critica_sobre_advertencias(self):
         lectura = LecturaValidada("sensor_01", 80, 6000, 33, datetime.now().astimezone())
