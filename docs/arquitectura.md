@@ -115,13 +115,12 @@ el **procesamiento paralelo**: cada trabajador procesa un dato de forma independ
 se sincroniza con el resto al leer/escribir el acumulador compartido de agregados, protegido
 con mutex.
 
-La **persistencia** ocurre exclusivamente en `DatabaseManager`, que agrupa en una sola
-transacción ACID el `INSERT` de la lectura y, si corresponde, el `INSERT` de la alerta
-asociada (ver `src/database/schema.sql` y el ejemplo de `START TRANSACTION ... COMMIT`). En la
-ruta C++, el `INSERT IGNORE` que registra un sensor se ejecuta antes de esa transacción y puede
-persistir aunque falle la lectura; la atomicidad cubre lectura y alerta. El mutex serializa el
-uso de la conexión compartida y la restricción `UNIQUE KEY uq_sensor_momento` evita duplicar la
-misma lectura.
+Ambas rutas persisten la lectura y, si corresponde, su alerta asociada dentro de una transacción
+ACID. En C++, `DatabaseManager` ejecuta esa transacción; el `INSERT IGNORE` que registra un sensor
+ocurre antes y puede persistir aunque falle la lectura. En la ruta MQTT, `persistir_lectura_mqtt()`
+incluye el registro del sensor en la transacción y el suscriptor confirma el mensaje después del
+commit. En C++, el mutex serializa el uso de la conexión compartida y la restricción
+`UNIQUE KEY uq_sensor_momento` evita duplicar la misma lectura.
 
 Finalmente, `APIServiceFastAPI` expone endpoints REST de consulta, ingesta MQTT y un endpoint
 WebSocket (`/ws/dashboard`) que difunde snapshots basados en MySQL a los navegadores. El
@@ -135,7 +134,7 @@ el formato documentado y requiere calibración. La ubicación del panel se confi
 |---|---|---|
 | Concurrencia (ingesta) | `SensorHiloProductor` → `ColaConcurrente` | hilos productores + mutex/condition_variable |
 | Concurrencia (procesamiento) | `ThreadPoolConsumidor` | pool de hilos + mutex sobre el acumulador de agregados |
-| Persistencia | `DatabaseManager` → MySQL | transacciones ACID |
+| Persistencia | `DatabaseManager` (C++) / `persistir_lectura_mqtt()` (FastAPI) → MySQL | transacción para lectura y alerta asociada |
 | Entrada de red | `IngestorMQTT` → MySQL | suscripción MQTT QoS 1, validación, commit antes del ACK |
 | Actualizaciones del dashboard | `HubDashboard` → `WS /ws/dashboard` | canal persistente; snapshot JSON compartido de estado y alertas cada ~2 s, `ping`/`pong` |
 
