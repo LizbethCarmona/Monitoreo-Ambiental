@@ -15,7 +15,8 @@ class ColaConcurrente {
     - mtx: std::mutex
     - cv_productores: std::condition_variable
     - cv_consumidores: std::condition_variable
-    - capacidad_maxima: int
+    - capacidad_maxima: std::size_t
+    - cerrada: bool
     + push(data: MetricaSensor): void
     + pop(): std::optional<MetricaSensor>
     + cerrar(): void
@@ -28,13 +29,25 @@ class SensorHiloProductor {
 }
 
 class ThreadPoolConsumidor {
-    - num_workers: int
-    - trabajadores: std::vector<std::thread>
+    + ThreadPoolConsumidor(num_workers: int, cola: ColaConcurrente&, db: DatabaseManager&)
     + iniciar(): void
     + esperarFinalizacion(): void
-    + procesarMetricas(): void
-    + calcularPromediosParalelo(data: const MetricaSensor&): void
-    + evaluarUmbrales(data: const MetricaSensor&, salida: Alerta&): bool
+    + totalProcesadas(): long
+    + totalAlertas(): long
+    + totalErroresPersistencia(): long
+    + agregados(): const AcumuladorAgregados&
+    - procesarMetricas(): void
+    - calcularPromediosParalelo(data: const MetricaSensor&): void
+    - evaluarUmbrales(data: const MetricaSensor&, salida: Alerta&): bool
+    - num_workers: int
+    - cola: ColaConcurrente&
+    - db: DatabaseManager&
+    - umbrales: UmbralesLectura
+    - trabajadores: std::vector<std::thread>
+    - agregados: AcumuladorAgregados
+    - total_procesadas: std::atomic<long>
+    - total_alertas: std::atomic<long>
+    - total_errores_persistencia: std::atomic<long>
 }
 
 class Alerta {

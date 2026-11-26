@@ -54,14 +54,11 @@ de agregados con detección de umbrales de contaminación.
 ## Arquitectura (resumen)
 
 ```
-SensorHiloProductor (N hilos) --push--> ColaConcurrente --pop--> ThreadPoolConsumidor
-                                  (mutex + condition_variable)        |
-                                                                       v
-                                                              DatabaseManager (MySQL, ACID)
-                                                                       |
-                                                                       v
-                                                             APIServiceFastAPI --> Dashboard
+Ruta C++:  SensorHiloProductor -> ColaConcurrente -> ThreadPoolConsumidor -> DatabaseManager -> MySQL
+Ruta MQTT: publicador -> Mosquitto -> IngestorMQTT (FastAPI) -> MySQL
 ```
+
+FastAPI consulta MySQL y entrega datos al dashboard por REST/WebSocket.
 
 Ver el detalle completo en [docs/arquitectura.md](docs/arquitectura.md).
 

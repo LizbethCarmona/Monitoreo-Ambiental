@@ -4,7 +4,7 @@
 > [Documento de Justificación](justificacion/Documento_Justificacion_Equipo_PC.pdf) y el
 > [diagrama de clases UML](uml/diagrama_clases.puml).
 
-## Diagrama de componentes y flujo de datos
+## Diagrama de componentes — ruta C++
 
 ```
 ┌─────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐
@@ -39,6 +39,10 @@
                                                                                 ▼
                                                                         Dashboard / clientes
 ```
+
+La ruta alternativa de ingesta MQTT es:
+`publicador/simulador → Mosquitto → IngestorMQTT (FastAPI) → MySQL`; después FastAPI
+consulta MySQL y entrega snapshots al dashboard por REST/WebSocket.
 
 ## Descripción
 
