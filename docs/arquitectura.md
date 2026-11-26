@@ -32,8 +32,8 @@
                                                                                 ▼
                                                                   ┌───────────────────────────┐
                                                                   │   APIServiceFastAPI        │
-                                                                  │  getEstadoClima()/         │
-                                                                  │  getAlertas()               │
+                                                                  │  get_estado_clima()/       │
+                                                                  │  get_alertas()              │
                                                                   └─────────────┬─────────────┘
                                                                                 │
                                                                                 ▼
@@ -122,7 +122,7 @@ incluye el registro del sensor en la transacción y el suscriptor confirma el me
 commit. En C++, el mutex serializa el uso de la conexión compartida y la restricción
 `UNIQUE KEY uq_sensor_momento` evita duplicar la misma lectura.
 
-Finalmente, `APIServiceFastAPI` expone endpoints REST de consulta, ingesta MQTT y un endpoint
+Finalmente, la aplicación FastAPI expone endpoints REST de consulta, ingesta MQTT y un endpoint
 WebSocket (`/ws/dashboard`) que difunde snapshots basados en MySQL a los navegadores. El
 simulador MQTT facilita validar el protocolo sin hardware; un dispositivo real debe publicar
 el formato documentado y requiere calibración. La ubicación del panel se configura con

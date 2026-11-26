@@ -1,7 +1,8 @@
 # API REST (`api_fastapi`)
 
-Implementación de la clase `APIServiceFastAPI` del UML. Consulta en MySQL las lecturas que
-ingresan por el núcleo C++ o por MQTT (`src/database/schema.sql`). La base de datos y las
+La API implementada en `app.main` consulta en MySQL las lecturas que ingresan por el núcleo C++
+o por MQTT (`src/database/schema.sql`). El UML la representa como `APIServiceFastAPI` por
+claridad; en el código real son manejadores de ruta a nivel de módulo. La base de datos y las
 consultas son reales; las lecturas de los simuladores no son mediciones físicas ni provienen
 de un servicio meteorológico.
 
@@ -60,9 +61,10 @@ Set-Location src\api_fastapi
 Luego abre `http://127.0.0.1:8000/docs` para la documentación interactiva (Swagger UI), o
 prueba directamente:
 
-- `GET /estado-clima` — equivalente a `APIServiceFastAPI.getEstadoClima()`: última lectura
-  global, mínimo/máximo del día UTC, promedios móviles de PM2.5 (24 h) y CO2 (8 h), y agregados
-  observados por hora, calculados sobre la tabla `lecturas`. Los promedios son `AVG` aritméticos
+- `GET /estado-clima` — implementado por `get_estado_clima()`: última lectura
+  global, mínimo/máximo de temperatura del día UTC, promedios móviles de PM2.5 (24 h) y
+  CO2 (8 h), y agregados observados por hora, calculados sobre la tabla `lecturas`. Los
+  promedios son `AVG` aritméticos
   de todas las filas de todos los sensores en cada ventana; no están ponderados por tiempo ni
   exigen una cobertura mínima. `sensores_activos` cuenta filas con `activo = 1` en el catálogo,
   no sensores con conectividad reciente. Los timestamps MQTT deben incluir zona horaria, se
@@ -73,12 +75,12 @@ prueba directamente:
   contiene solo horas con lecturas
   dentro de las últimas 24 h. La fecha del encabezado se presenta en la zona `America/Mexico_City`;
   timestamps y horas del historial permanecen en UTC.
-- `GET /alertas` — equivalente a `APIServiceFastAPI.getAlertas()`: lee la tabla `alertas`
+- `GET /alertas` — implementado por `get_alertas()`: lee la tabla `alertas`
   (`WHERE atendida = 0`), devuelve el total de alertas no atendidas y una lista de hasta 20
   recientes. “Activa” aquí significa no marcada como atendida; no es un detector continuo de
   condiciones actuales.
-- `GET /alertas/historial` — devuelve el total y una lista de hasta 100 alertas recientes,
-  atendidas o no.
+- `GET /alertas/historial?limite=N` — devuelve el total y las alertas recientes, atendidas o no.
+  `limite` es 100 por defecto y acepta valores de 1 a 500; el dashboard solicita 100.
 - `GET /salud` — valida MySQL y muestra el estado/conteos de MQTT sin exponer credenciales.
 - `WS /ws/dashboard` — abre una conexión persistente entre el navegador y FastAPI. Al conectarse,
   envía un snapshot JSON de estado y alertas; después el hub comparte una consulta y difunde

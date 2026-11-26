@@ -133,7 +133,7 @@ Esta base de datos ya está conectada de verdad a los otros dos componentes:
 
 - `src/cpp_ingestion/` (`DatabaseManager`) inserta aquí las lecturas simuladas y alertas que
   genera el núcleo concurrente (ver `make run-continuo` en su README).
-- `src/api_fastapi/` lee de aquí para `getEstadoClima()`/`getAlertas()`.
+- `src/api_fastapi/` lee de aquí para `get_estado_clima()`/`get_alertas()`.
 
 Los tres componentes admiten las variables de entorno
 (`MYSQL_HOST`/`MYSQL_PORT`/`MYSQL_USER`/`MYSQL_PASSWORD`/`MYSQL_DATABASE`). En el script de

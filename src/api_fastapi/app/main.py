@@ -1,8 +1,9 @@
 """API REST del proyecto Monitoreo ambiental en tiempo real.
 
-Implementa la clase `APIServiceFastAPI` del UML (ver
-docs/uml/diagrama_clases.puml) consultando MySQL (src/database/schema.sql):
-getEstadoClima() y getAlertas() leen las tablas
+Implementa mediante manejadores de ruta a nivel de módulo la API representada como
+`APIServiceFastAPI` en el UML (no existe una clase con ese nombre; ver
+docs/uml/diagrama_clases.puml). `get_estado_clima()` y `get_alertas()` consultan MySQL
+(src/database/schema.sql) y leen las tablas
 `lecturas`, `alertas`, `sensores` y `umbrales` que el núcleo concurrente en
 C++ (src/cpp_ingestion) va llenando con lecturas simuladas. La persistencia es
 real; también puede recibir mensajes de sensores externos por MQTT cuando el suscriptor
@@ -239,7 +240,7 @@ def _nivel_de(umbrales: dict, metrica: str, valor, aplica_a: str = "lectura") ->
     return "normal"
 
 
-@app.get("/estado-clima", summary="Equivalente a APIServiceFastAPI.getEstadoClima()")
+@app.get("/estado-clima", summary="Estado del clima actual")
 def get_estado_clima() -> dict:
     try:
         conn = db.conectar()
@@ -346,7 +347,7 @@ def get_estado_clima() -> dict:
     }
 
 
-@app.get("/alertas", summary="Equivalente a APIServiceFastAPI.getAlertas()")
+@app.get("/alertas", summary="Alertas no atendidas")
 def get_alertas() -> dict:
     try:
         conn = db.conectar()
